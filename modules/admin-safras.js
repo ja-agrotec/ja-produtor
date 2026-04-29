@@ -1,6 +1,6 @@
 // ============================================================
 // JA AGRO — Admin Module: Safras
-// admin-safras.js
+// admin-safras.js | Schema: data_plantio, data_colheita
 // ============================================================
 window.module_safras = async function() {
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -13,7 +13,7 @@ window.module_safras = async function() {
     try {
       const [{ data: fazendas, error: e1 }, { data: safras, error: e2 }] = await Promise.all([
         sb.from('fazendas').select('id,nome').eq('ativo',true).order('nome'),
-        sb.from('safras').select('*, fazendas(nome)', { count: 'exact' }).order('data_inicio', { ascending: false })
+        sb.from('safras').select('*, fazendas(nome)').order('data_plantio', { ascending: false })
       ]);
       if(e1) throw e1;
       if(e2) throw e2;
@@ -48,7 +48,7 @@ window.module_safras = async function() {
       '</div>'+
       '<div class="table-wrap" style="margin:16px 20px">'+
       '<table class="data-table"><thead><tr>'+
-      '<th>Nome / Cultura</th><th>Fazenda</th><th>Periodo</th><th>Area (ha)</th><th>Status</th><th>Acoes</th>'+
+      '<th>Nome / Cultura</th><th>Fazenda</th><th>Plantio - Colheita</th><th>Area (ha)</th><th>Status</th><th>Acoes</th>'+
       '</tr></thead><tbody id="safrasBody">'+
       renderRows()+
       '</tbody></table></div>';
@@ -86,7 +86,7 @@ window.module_safras = async function() {
       return '<tr>'+
       '<td><strong>'+esc(s.nome)+'</strong><br><small style="color:var(--muted)">'+esc(s.cultura||'')+'</small></td>'+
       '<td>'+esc((s.fazendas&&s.fazendas.nome)||'--')+'</td>'+
-      '<td style="font-size:13px">'+fmtDate(s.data_inicio)+' - '+fmtDate(s.data_fim_prevista)+'</td>'+
+      '<td style="font-size:13px">'+fmtDate(s.data_plantio)+' - '+fmtDate(s.data_colheita)+'</td>'+
       '<td>'+(s.area_ha ? s.area_ha+' ha' : '--')+'</td>'+
       '<td>'+statusBadge(s.status)+'</td>'+
       '<td>'+
@@ -119,10 +119,10 @@ window.module_safras = async function() {
       '<select id="saf_fazenda"><option value="">Selecione...</option>'+fazOpts+'</select></div>'+
       '<div class="form-field"><label>Cultura *</label>'+
       '<select id="saf_cultura"><option value="">Selecione...</option>'+cultOpts+'</select></div>'+
-      '<div class="form-field"><label>Data Inicio</label>'+
-      '<input id="saf_inicio" type="date" value="'+(s&&s.data_inicio||'')+'"/></div>'+
-      '<div class="form-field"><label>Data Fim Prevista</label>'+
-      '<input id="saf_fim" type="date" value="'+(s&&s.data_fim_prevista||'')+'"/></div>'+
+      '<div class="form-field"><label>Data de Plantio</label>'+
+      '<input id="saf_plantio" type="date" value="'+(s&&s.data_plantio||'')+'"/></div>'+
+      '<div class="form-field"><label>Data de Colheita Prevista</label>'+
+      '<input id="saf_colheita" type="date" value="'+(s&&s.data_colheita||'')+'"/></div>'+
       '<div class="form-field"><label>Area (ha)</label>'+
       '<input id="saf_area" type="number" step="0.01" min="0" value="'+(s&&s.area_ha||'')+'"/></div>'+
       '<div class="form-field"><label>Status</label>'+
@@ -131,21 +131,24 @@ window.module_safras = async function() {
       '<option value="em_andamento"'+(s&&s.status==='em_andamento'?' selected':'')+'>Em andamento</option>'+
       '<option value="encerrada"'+(s&&s.status==='encerrada'?' selected':'')+'>Encerrada</option>'+
       '</select></div>'+
+      '<div class="form-field" style="grid-column:1/-1"><label>Observacoes</label>'+
+      '<textarea id="saf_obs" rows="2" style="width:100%;resize:vertical;padding:8px;border:1px solid var(--brd);border-radius:var(--r)">'+esc(s&&s.observacoes||'')+'</textarea></div>'+
       '</div>',
       async function() {
         const nome    = document.getElementById('saf_nome').value.trim();
         const fazId   = document.getElementById('saf_fazenda').value;
         const cultura = document.getElementById('saf_cultura').value;
-        const inicio  = document.getElementById('saf_inicio').value || null;
-        const fim     = document.getElementById('saf_fim').value || null;
+        const plantio = document.getElementById('saf_plantio').value || null;
+        const colheita = document.getElementById('saf_colheita').value || null;
         const area    = parseFloat(document.getElementById('saf_area').value) || null;
         const status  = document.getElementById('saf_status').value;
+        const obs     = document.getElementById('saf_obs').value.trim() || null;
 
         if(!nome) { toast('Informe o nome da safra','bad'); return; }
         if(!fazId) { toast('Selecione a fazenda','bad'); return; }
         if(!cultura) { toast('Selecione a cultura','bad'); return; }
 
-        const payload = { nome, fazenda_id: fazId, cultura, data_inicio: inicio, data_fim_prevista: fim, area_ha: area, status };
+        const payload = { nome, fazenda_id: fazId, cultura, data_plantio: plantio, data_colheita: colheita, area_ha: area, status, observacoes: obs };
         const { error } = isNovo
           ? await sb.from('safras').insert(payload)
           : await sb.from('safras').update(payload).eq('id', s.id);

@@ -680,6 +680,22 @@ window.toggleSidebar = function(force) {
   o.classList.toggle('show', open);
 };
 
+// ── ESC + HELPERS ───────────────────────────────────
+window.esc = function(s){
+  if(s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+};
+window.showModal = window.openModal;
+window.showConfirm = function(msg, onConfirm) {
+  openModal("Confirmar", "<div style='padding:8px 0 16px'><p>" + msg + "</p></div>", onConfirm);
+  var btn = document.getElementById("modalSaveBtn");
+  if(btn) btn.textContent = "Confirmar";
+};
+
 // ── AUTH ──────────────────────────────────────
 async function initAuth() {
   try {

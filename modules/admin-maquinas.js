@@ -113,7 +113,7 @@ window.module_maquinas = async function() {
       '<div class="form-field"><label>Fazenda *</label>'+
       '<select id="maq_fazenda"><option value="">Selecione...</option>'+fazOpts+'</select></div>'+
       '<div class="form-field"><label>Ano de Fabricacao</label>'+
-      '<input id="maq_ano" type="number" min="1990" max="2030" value="'+(m&&m.ano_fabricacao||'')+'" placeholder="2020"/></div>'+
+      '<input id="maq_ano" type="number" min="1990" max="2030" value="'+(m&&m.ano||'')+'" placeholder="2020"/></div>'+
       '<div class="form-field"><label>Horimetro Atual (h)</label>'+
       '<input id="maq_hor" type="number" min="0" value="'+(m&&m.horimetro_atual||0)+'"/></div>'+
       '<div class="form-field"><label>Proxima Manutencao (h)</label>'+
@@ -135,7 +135,7 @@ window.module_maquinas = async function() {
         if(!tipo) { toast('Selecione o tipo','bad'); return; }
         if(!fazId) { toast('Selecione a fazenda','bad'); return; }
 
-        const payload = { nome, modelo, tipo, fazenda_id: fazId, ano_fabricacao: ano, horimetro_atual: hor, proxima_manutencao_h: prox, placa };
+        const payload = { nome, modelo, tipo, fazenda_id: fazId, ano: ano, horimetro_atual: hor, proxima_manutencao_h: prox, placa };
         const { error } = isNovo
           ? await sb.from('maquinas').insert({ ...payload, ativo: true })
           : await sb.from('maquinas').update(payload).eq('id', m.id);

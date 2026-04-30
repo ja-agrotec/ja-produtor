@@ -64,7 +64,7 @@ window.module_lancamentos = async function() {
       '<select class="search-input" id="filtSafraLanc" onchange="window._lanc_setSafra(this.value)" style="width:160px">'+safraOpts+'</select>'+
       '<select class="search-input" id="filtTipoLanc" onchange="window._lanc_setTipo(this.value)" style="width:130px">'+
       '<option value="">Todos os tipos</option>'+
-      '<option value="custo"'+(_filtroTipo==='custo'?' selected':'')+'>Custo</option>'+
+      '<option value="despesa"'+(_filtroTipo==='despesa'?' selected':'')+'>Despesa</option>'+
       '<option value="receita"'+(_filtroTipo==='receita'?' selected':'')+'>Receita</option>'+
       '</select>'+
       '<input class="search-input" id="srchLanc" placeholder="Buscar..." value="'+esc(_search)+'" oninput="window._lanc_search(this.value)" style="width:160px"/>'+
@@ -104,7 +104,7 @@ window.module_lancamentos = async function() {
       const isCusto = l.tipo === 'custo';
       return '<tr>'+
       '<td>'+fmtDate(l.data_lancamento)+'</td>'+
-      '<td>'+(isCusto ? '<span class="badge" style="background:#fee2e2;color:#991b1b">Custo</span>' : '<span class="badge badge-green">Receita</span>')+'</td>'+
+      '<td>'+(isCusto ? '<span class="badge" style="background:#fee2e2;color:#991b1b">Despesa</span>' : '<span class="badge badge-green">Receita</span>')+'</td>'+
       '<td>'+esc(l.descricao||'--')+'</td>'+
       '<td style="font-size:12px">'+esc((l.insumos&&l.insumos.nome)||(l.maquinas&&l.maquinas.nome)||'--')+'</td>'+
       '<td style="font-size:12px">'+esc((l.fazendas&&l.fazendas.nome)||'--')+'</td>'+
@@ -153,7 +153,7 @@ window.module_lancamentos = async function() {
       '<div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'+
       '<div class="form-field"><label>Tipo *</label>'+
       '<select id="lanc_tipo">'+
-      '<option value="custo"'+(tipoAtual==='custo'?' selected':'')+'>Custo</option>'+
+      '<option value="despesa"'+(tipoAtual==='despesa'?' selected':'')+'>Despesa</option>'+
       '<option value="receita"'+(tipoAtual==='receita'?' selected':'')+'>Receita</option>'+
       '</select></div>'+
       '<div class="form-field"><label>Data *</label>'+

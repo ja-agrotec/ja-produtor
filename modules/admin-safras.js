@@ -35,7 +35,7 @@ window.module_safras = async function() {
       '<select class="search-input" id="filtroStatus" onchange="window._safras_setStatus(this.value)" style="width:150px">'+
       '<option value="">Todos status</option>'+
       '<option value="planejamento"'+((_filtroStatus==='planejamento')?' selected':'')+'>Planejamento</option>'+
-      '<option value="em_andamento"'+((_filtroStatus==='em_andamento')?' selected':'')+'>Em andamento</option>'+
+      '<option value="aberta"'+((_filtroStatus==='aberta')?' selected':'')+'>Aberta</option>'+
       '<option value="encerrada"'+((_filtroStatus==='encerrada')?' selected':'')+'>Encerrada</option>'+
       '</select>'+
       '<input class="search-input" id="srchSaf" placeholder="Buscar safra..." value="'+esc(_search)+'" oninput="window._safras_search(this.value)" style="width:200px"/>'+
@@ -43,7 +43,7 @@ window.module_safras = async function() {
       '</div></div>'+
       '<div class="stat-row" style="display:flex;gap:12px;flex-wrap:wrap;padding:16px 20px 0">'+
       '<div class="stat-card green"><div class="stat-card-val">'+stats.total+'</div><div class="stat-card-lbl">Safras</div></div>'+
-      '<div class="stat-card blue"><div class="stat-card-val">'+stats.emAndamento+'</div><div class="stat-card-lbl">Em Andamento</div></div>'+
+      '<div class="stat-card blue"><div class="stat-card-val">'+stats.emAndamento+'</div><div class="stat-card-lbl">Aberta</div></div>'+
       '<div class="stat-card orange"><div class="stat-card-val">'+stats.planejamento+'</div><div class="stat-card-lbl">Planejamento</div></div>'+
       '</div>'+
       '<div class="table-wrap" style="margin:16px 20px">'+
@@ -58,7 +58,7 @@ window.module_safras = async function() {
     const vis = filtrados();
     return {
       total: vis.length,
-      emAndamento: vis.filter(function(s){ return s.status==='em_andamento'; }).length,
+      emAndamento: vis.filter(function(s){ return s.status==='aberta'; }).length,
       planejamento: vis.filter(function(s){ return s.status==='planejamento'; }).length
     };
   }
@@ -73,7 +73,7 @@ window.module_safras = async function() {
   }
 
   function statusBadge(s) {
-    if(s==='em_andamento') return '<span class="badge badge-green">Em andamento</span>';
+    if(s==='aberta') return '<span class="badge badge-green">Aberta</span>';
     if(s==='encerrada') return '<span class="badge" style="background:#e9ecef">Encerrada</span>';
     return '<span class="badge badge-blue">Planejamento</span>';
   }
@@ -128,7 +128,7 @@ window.module_safras = async function() {
       '<div class="form-field"><label>Status</label>'+
       '<select id="saf_status">'+
       '<option value="planejamento"'+(s&&s.status==='planejamento'?' selected':(!s?' selected':''))+'>Planejamento</option>'+
-      '<option value="em_andamento"'+(s&&s.status==='em_andamento'?' selected':'')+'>Em andamento</option>'+
+      '<option value="aberta"'+(s&&s.status==='aberta'?' selected':'')+'>Aberta</option>'+
       '<option value="encerrada"'+(s&&s.status==='encerrada'?' selected':'')+'>Encerrada</option>'+
       '</select></div>'+
       '<div class="form-field" style="grid-column:1/-1"><label>Observacoes</label>'+

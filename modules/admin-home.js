@@ -102,7 +102,7 @@ window.module_home = async function() {
       var cor=pct<=0?"#dc2626":pct<1?"#d97706":"#16a34a";
       var ico=pct<=0?"&#x1F534;":pct<1?"&#x1F7E1;":"&#x1F7E2;";
       var lbl=pct<=0?"Critico":pct<1?"Baixo":"OK";
-      var o="<div style=\"display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f9fafb;border-radius:8px;margin-bottom:5px\">";
+      var o="";
       o+="<div style=\"display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#f9fafb;border-radius:8px;margin-bottom:5px\">";
       o+="<span style=\"font-size:0.82rem;color:#374151\">"+ico+" "+esc(ins.nome)+"</span>";
       o+="<span style=\"font-size:0.7rem;font-weight:600;color:#fff;background:"+cor+";padding:2px 8px;border-radius:10px\">"+lbl+"</span>";

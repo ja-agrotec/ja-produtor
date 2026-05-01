@@ -671,7 +671,7 @@ window.loadModule = function(name, el) {
   script.onload = function() {
     if(window['module_' + name]) {
       modules[name] = window['module_' + name];
-      modules[name]();
+      const _mc = document.getElementById('mainContent'); if(modules[name].length > 0) { modules[name](_mc); } else { modules[name](); }
     } else {
       document.getElementById('mainContent').innerHTML =
         '<div class="page-loading"><div style="font-size:48px">🚧</div><div class="loading-text">Módulo em construção</div></div>';

@@ -131,7 +131,7 @@
     </div>`;
   }
 
-  window.module_home = render;
+  window.module_home = function() { render(document.getElementById('mainContent')); };
   window.AdminHome = { render };
 
 })();

@@ -36,10 +36,8 @@ const AdminAnaliseSolo = (() => {
 
   function getSupabase() {
     if (supabase) return supabase;
-    if (window.supabaseClient) { supabase = window.supabaseClient; return supabase; }
-    const keys = Object.keys(window).filter(k => window[k] && typeof window[k].from === 'function');
-    if (keys.length) { supabase = window[keys[0]]; return supabase; }
-    return null;
+    supabase = window.sb;  // Global supabase client from config.js
+    return supabase;
   }
 
   async function runMigrations() {

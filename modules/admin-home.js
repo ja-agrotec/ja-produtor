@@ -35,10 +35,11 @@
         sb.from('talhoes').select('*', {count:'exact',head:true}),
         sb.from('safras').select('id,nome,cultura,area_total,fazendas(nome)').eq('status','aberta').limit(5),
         sb.from('lancamentos').select('id,tipo,valor,descricao,data,categorias_lancamento(nome)').order('data',{ascending:false}).limit(5),
-        sb.from('insumos').select('id,nome,estoque_atual,estoque_minimo').lt('estoque_atual', sb.raw('estoque_minimo')).limit(5)
+        sb.from('insumos').select('id,nome,estoque_atual,estoque_minimo').not('estoque_minimo','is',null).limit(20)
       ]);
 
-      const totalPendencias = (insumosBaixos||[]).length;
+      const insumosBaixosFiltrados = (insumosBaixos||[]).filter(i => (i.estoque_atual||0) < (i.estoque_minimo||0));
+      const totalPendencias = insumosBaixosFiltrados.length;
 
       container.innerHTML = `
       <div style="padding:24px;max-width:1200px;margin:0 auto">
@@ -94,10 +95,10 @@
         </div>
 
         <!-- Pendências -->
-        ${(insumosBaixos||[]).length > 0 ? `
+        ${insumosBaixosFiltrados.length > 0 ? `
         <div style="background:#fff;border:1.5px solid #fee2e2;border-radius:12px;padding:20px">
           <h3 style="margin:0 0 16px;font-size:1rem;color:#dc2626;font-weight:700">⚠️ Insumos Abaixo do Estoque Mínimo</h3>
-          ${(insumosBaixos||[]).map(i => `
+          ${insumosBaixosFiltrados.map(i => `
             <div style="padding:8px 0;display:flex;justify-content:space-between;border-bottom:1px solid #fee2e2">
               <span style="color:#374151;font-size:.9rem">${esc(i.nome)}</span>
               <span style="color:#dc2626;font-weight:600;font-size:.85rem">Atual: ${i.estoque_atual||0} / Mín: ${i.estoque_minimo||0}</span>

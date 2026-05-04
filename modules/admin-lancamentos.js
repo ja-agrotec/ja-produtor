@@ -1,5 +1,5 @@
 window.module_lancamentos = async function() {
-  const el = document.getElementById("module-content");
+  const el = document.getElementById("mainContent");
   if(!el) return;
 
   let _fazendas=[], _safras=[], _talhoes=[], _operadores=[], _insumos=[], _maquinas=[], _lancamentos=[];

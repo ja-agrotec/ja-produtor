@@ -61,7 +61,8 @@ window.module_fechamento_safra = async function() {
       html += "<div style=\"display:flex;align-items:center;gap:12px\">"
       html += statusBadge(f.status)
       html += "<button onclick=\"window._fsVerDetalhe('"+f.id+"');\" style=\"background:#1565c0;color:#fff;border:none;border-radius:6px;padding:6px 14px;cursor:pointer;font-size:12px\">Ver</button>"
-      html += "</div></div>"
+          if(f.status==="rascunho") html += " <button onclick=\"window._fsExcluirRascunho('"+f.id+"')\" style=\"background:none;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:12px;margin-left:6px\">\uD83D\uDDD1 Excluir Rascunho</button>";
+    html += "</div></div>"
       // KPI summary row
       html += "<div style=\"padding:12px 16px;display:grid;grid-template-columns:repeat(6,1fr);gap:10px\">"
       html += "<div style=\"text-align:center\"><div style=\"font-size:11px;color:#888\">Area</div><div style=\"font-size:14px;font-weight:600\">"+fmtHa(f.area_total_ha)+"</div></div>"
@@ -501,6 +502,16 @@ window.module_fechamento_safra = async function() {
 
   window._fsGotoAtivos = function() {
     alert("Em breve: modulo de Cadastro de Ativos para depreciacao.");
+  };
+
+  window._fsExcluirRascunho = async function(id){
+    if(!confirm("Excluir este rascunho de fechamento? Esta a\u00E7\u00E3o n\u00E3o pode ser desfeita.")) return;
+    var { error } = await sb.from("fechamento_talhao").delete().eq("fechamento_id", id);
+    if(error && error.code !== "PGRST116") { alert("Erro ao excluir detalhes: "+error.message); return; }
+    var { error: err2 } = await sb.from("fechamento_safra").delete().eq("id", id);
+    if(err2) { alert("Erro ao excluir fechamento: "+err2.message); return; }
+    toast("Rascunho exclu\u00EDdo com sucesso","ok");
+    await window.module_fechamento_safra();
   };
 
 }; // end module_fechamento_safra

@@ -131,7 +131,7 @@ window.module_fechamento_safra = async function() {
       listHtml += "<input type=\"checkbox\" class=\"fsTalhaoChk\" value=\""+t.id+"\" data-area=\""+t.area_ha+"\" data-nome=\""+t.nome+"\" checked>"
       listHtml += "<span>"+t.nome+"</span>"
       listHtml += "<span style=\"color:#888;font-size:12px;margin-left:auto\">"+parseFloat(t.area_ha||0).toFixed(2)+" ha</span>"
-      listHtml += "<span style=\"margin-left:8px;font-size:12px;color:#555\"">Produz: <input type=\"number\" class=\"fsTalhaoProducao\" data-id=\""+t.id+"\" min=\"0\" step=\"0.1\" placeholder=\"0\" style=\"width:80px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:right\"> sc</span>"
+      listHtml += "<span style=\"margin-left:8px;font-size:12px;color:#555\">Produz: <input type=\"number\" class=\"fsTalhaoProducao\" data-id=\""+t.id+"\" min=\"0\" step=\"0.1\" placeholder=\"0\" style=\"width:80px;padding:4px;border:1px solid #ddd;border-radius:4px;text-align:right\"> sc</span>"
       listHtml += "</label>"
     });
     document.getElementById("fsTalhoesList").innerHTML = listHtml || "<p style=\"color:#888\">Nenhum talhao encontrado para esta fazenda.</p>";

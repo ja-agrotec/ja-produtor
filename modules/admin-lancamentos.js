@@ -6,7 +6,7 @@ window.module_lancamentos = async function() {
   let _filtFaz="", _filtSafra="", _filtTipo="", _filtBusca="";
 
   function esc(v){ return v ? String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") : ""; }
-  function fmt(v){ return (v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}); }
+  function fmt(v){ return (v||0).toLocaleString("pt-BR",{hstyle:"currency",currency:"BRL"}); }
   function fmtN(v,d){ return (v||0).toLocaleString("pt-BR",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
   function today(){ return new Date().toISOString().slice(0,10); }
 
@@ -14,7 +14,7 @@ window.module_lancamentos = async function() {
     const [fa,sa,ta,op,ins,maq,lan] = await Promise.all([
       sb.from("fazendas").select("id,nome").order("nome"),
       sb.from("safras").select("id,nome,fazenda_id,status").order("nome"),
-      sb.from("talhoes").select("id,nome,fazenda_id,certificacao_id").order("nome"),
+      sb.from("talhoes").select("id,nome,fazenda_id,segue_certificacao").order("nome"),
       sb.from("operadores").select("id,nome,fazenda_id").order("nome"),
       sb.from("insumos").select("id,nome,unidade,preco_unitario,certificacao_permitida").order("nome"),
       sb.from("maquinas").select("id,nome,fazenda_id,tipo,custo_hora,horimetro_atual").order("nome"),
@@ -347,7 +347,7 @@ window.module_lancamentos = async function() {
 
   window._lanc_onTalhaoChange = function(talId){
     var tal = _talhoes.find(function(t){return t.id===talId;});
-    var filterCert = !!(tal && tal.certificacao_id);
+    var filterCert = !!(tal && tal.segue_certificacao);
     var warn = document.getElementById("lanc_cert_warn");
     if(warn) warn.style.display = filterCert ? "block" : "none";
     var insSel = document.getElementById("lanc_insumo");

@@ -830,10 +830,9 @@ initAuth();
     window['module_qualidade'] = async function() {
       const cont = document.getElementById('mainContent');
       setTopbar('Qualidade', 'Registros de qualidade por cultura');
-      if(window.AdminQualidade) { await window.AdminQualidade.render(cont); return; }
       var s = document.createElement('script');
       s.src = 'modules/admin-qualidade.js?v=' + Date.now();
-      s.onload = async function() { if(window.AdminQualidade) await window.AdminQualidade.render(cont); };
+      s.onload = async function() { };
       document.head.appendChild(s);
     };
 </script>

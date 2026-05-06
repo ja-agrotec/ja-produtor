@@ -128,7 +128,7 @@ window.module_dashboard = async function() {
     html += "<div style=\"display:flex;align-items:center;gap:16px;height:100%\">";
     html += "<div style=\"flex:0 0 180px\"><canvas id=\"chartDoughnut\" height=\"180\"></canvas></div>";
     html += "<div style=\"flex:1\">";
-    var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mao de Obra",v:catTotals["Mao de Obra"],c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
+    var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mao de Obra",v:catTotals.MaoDeObra,c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
     catEntries.forEach(function(e){
       var pct = totalDesp > 0 ? (e.v / totalDesp * 100).toFixed(1) : 0;
       html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:10px\">";
@@ -293,7 +293,7 @@ window.module_dashboard = async function() {
       type: "doughnut",
       data: {
         labels: ["Insumos","Mao de Obra","Maquinas","Outros"],
-        datasets: [{ data: [catTotals.Insumos, catTotals["Mao de Obra"], catTotals.Maquinas, catTotals.Outros], backgroundColor: ["#2d7d32","#1565c0","#e65100","#9e9e9e"], borderWidth: 0 }]
+        datasets: [{ data: [catTotals.Insumos, catTotals.MaoDeObra, catTotals.Maquinas, catTotals.Outros], backgroundColor: ["#2d7d32","#1565c0","#e65100","#9e9e9e"], borderWidth: 0 }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: "70%" }
     });
@@ -314,5 +314,45 @@ window.module_dashboard = async function() {
     });
   }
 
+
+  var ctxR = safeChart("chartRoi");
+  if (ctxR && fechComRoi.length > 0) {
+    new Chart(ctxR, {
+      type: "bar",
+      data: { labels: fechLabels,
+        datasets: [{ label: "ROI %", data: fechRoi,
+          backgroundColor: fechRoi.map(function(v){ return v>=0 ? "rgba(45,125,50,0.75)" : "rgba(198,40,40,0.75)"; }),
+          borderRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, indexAxis: "y",
+        plugins: { legend: { display: false } },
+        scales: { x: { ticks: { callback: function(v){ return v + "%"; } } } } }
+    });
+  }
+
+  var byFaz = {};
+  lancs.forEach(function(l){
+    if (!l.fazenda_id) return;
+    if (!byFaz[l.fazenda_id]) byFaz[l.fazenda_id] = 0;
+    if (l.tipo === "despesa") byFaz[l.fazenda_id] += parseFloat(l.custo_total||0);
+  });
+  var fazKeys2 = Object.keys(byFaz);
+  var fazLabels2 = fazKeys2.map(function(k){
+    var fz = fazendas.find(function(x){ return x.id === k; });
+    return fz ? fz.nome.substring(0,14) : k.substring(0,8);
+  });
+  var fazCosts = fazKeys2.map(function(k){ return byFaz[k]; });
+  var ctxC = safeChart("chartCompar");
+  if (ctxC && fazKeys2.length > 0) {
+    new Chart(ctxC, {
+      type: "bar",
+      data: { labels: fazLabels2,
+        datasets: [{ label: "Custo Total", data: fazCosts, backgroundColor: "rgba(198,40,40,0.75)", borderRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { grid: { display: false } }, y: { ticks: { callback: function(v){ return "R$"+Math.round(v/1000)+"k"; } } } } }
+    });
+  }
 }; // end module_dashboard
 window.module_dashboard();

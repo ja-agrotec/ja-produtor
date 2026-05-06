@@ -176,7 +176,7 @@ window.module_home = async function() {
   // VENDAS CARD
   html += "<div style=\"background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden\">"
   html += "<div style=\"padding:14px 16px;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center\">"
-  html += "<h3 style=\"margin:0;font-size:14px;color:#333\">&#127807; Vendas de Graos</h3>"
+  html += "<h3 style=\"margin:0;font-size:14px;color:#333\">&#127807; Vendas</h3>"
   html += "<a href=\"#\" onclick=\"event.preventDefault();document.querySelector('[data-module=vendas-graos]').click();\" style=\"font-size:12px;color:#2d7d32;text-decoration:none\">Gerenciar &rarr;</a>"
   html += "</div>"
   if (vendas.length === 0) {

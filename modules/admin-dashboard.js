@@ -115,125 +115,175 @@ window.module_dashboard = async function() {
   else { html += kpi("ROI","Sem dados","Realize fechamento","#9e9e9e",""); }
   html += "</div>"
 
-  // ROW 1: 2 charts side by side
-  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">"
-
-  // Chart 1: Custos por Categoria (Doughnut)
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 16px;font-size:14px;color:#333\">&#128202; Composicao de Custos</h3>"
-  html += "<div style=\"display:flex;align-items:center;gap:20px\">"
-  html += "<div style=\"flex:1;max-width:200px;margin:0 auto\"><canvas id=\"chartDoughnut\" height=\"200\"></canvas></div>"
-  // Legend
-  html += "<div style=\"flex:1\">"
-  var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mao de Obra",v:catTotals.MaoDeObra,c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
-  var totCat = catEntries.reduce(function(a,e){ return a+e.v; },0);
-  catEntries.forEach(function(e){
-    var pct = totCat>0?((e.v/totCat)*100).toFixed(1):0;
-    html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:8px\">"
-    html += "<div style=\"width:12px;height:12px;border-radius:2px;background:"+e.c+";flex-shrink:0\"></div>"
-    html += "<div style=\"flex:1;font-size:12px;color:#555\">"+e.n+"</div>"
-    html += "<div style=\"font-size:12px;font-weight:600;color:#333\">"+pct+"%</div>"
-    html += "</div>"
-  });
-  html += "<div style=\"margin-top:8px;padding-top:8px;border-top:1px solid #eee;font-size:12px;font-weight:700;color:#333\">Total: "+fmtBrl(totCat)+"</div>"
-  html += "</div>"
-  html += "</div></div>"
-
-  // Chart 2: Lancamentos por Mes (Bar)
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 16px;font-size:14px;color:#333\">&#128197; Lancamentos por Mes</h3>"
-  if (monthKeys.length === 0) {
-    html += "<div style=\"height:200px;display:flex;align-items:center;justify-content:center;color:#bbb;font-size:13px\">Nenhum lancamento registrado</div>"
+  
+  // ROW 1: Charts 2-column compact
+  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">";
+  // Chart 1: Doughnut Custos
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128202; Composicao de Custos</h3>";
+  html += "<div style=\"height:280px;position:relative\">";
+  if (totalDesp === 0) {
+    html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem lancamentos registrados</div>";
   } else {
-    html += "<canvas id=\"chartBar\" height=\"200\"></canvas>"
-  }
-  html += "</div>"
-  html += "</div>"
-
-  // ROW 2: ROI por Fechamento + Safras Comparison
-  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">"
-
-  // Chart 3: ROI por Fechamento (Bar horizontal)
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 16px;font-size:14px;color:#333\">&#127919; ROI por Fechamento (%)</h3>"
-  if (fechComRoi.length === 0) {
-    html += "<div style=\"height:200px;display:flex;align-items:center;justify-content:center;color:#bbb;text-align:center;font-size:13px\">Realize fechamentos para ver o ROI historico</div>"
-  } else {
-    html += "<canvas id=\"chartRoi\" height=\"180\"></canvas>"
-  }
-  html += "</div>"
-
-  // Chart 4: Receita vs Custo por Safra
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 16px;font-size:14px;color:#333\">&#9878; Receita vs Custo por Safra</h3>"
-  var safrasComDados = fechamentos.filter(function(f){ return parseFloat(f.custo_total||0)>0; }).slice(0,6);
-  if (safrasComDados.length === 0) {
-    html += "<div style=\"height:200px;display:flex;align-items:center;justify-content:center;color:#bbb;text-align:center;font-size:13px\">Sem fechamentos para comparar</div>"
-  } else {
-    html += "<canvas id=\"chartCompar\" height=\"180\"></canvas>"
-  }
-  html += "</div>"
-  html += "</div>"
-
-  // ROW 3: Estoque de Insumos + Safras Table
-  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">"
-
-  // Insumos Estoque Bar Chart
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 16px;font-size:14px;color:#333\">&#128994; Estoque de Insumos</h3>"
-  insumos.slice(0,8).forEach(function(ins){
-    var atual = parseFloat(ins.estoque_atual||0);
-    var min = parseFloat(ins.estoque_minimo||0);
-    var pct = min>0?Math.min(100,Math.round((atual/min)*100)):100;
-    var cor = atual>=min?"#2d7d32":atual>0?"#e65100":"#c62828";
-    html += "<div style=\"margin-bottom:12px\">"
-    html += "<div style=\"display:flex;justify-content:space-between;margin-bottom:4px\">"
-    html += "<span style=\"font-size:12px;color:#444\">"+ins.nome+"</span>"
-    html += "<span style=\"font-size:11px;color:"+cor+";font-weight:600\">"+atual+" / "+min+"</span>"
-    html += "</div>"
-    html += "<div style=\"background:#f0f0f0;border-radius:4px;height:8px\"><div style=\"background:"+cor+";height:8px;border-radius:4px;width:"+pct+"%\"></div></div>"
-    html += "</div>"
-  });
-  html += "</div>"
-
-  // Safras Table
-  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">"
-  html += "<h3 style=\"margin:0 0 14px;font-size:14px;color:#333\">&#127807; Safras Cadastradas</h3>"
-  if (safras.length === 0) {
-    html += "<div style=\"color:#bbb;font-size:13px;text-align:center;padding:32px\">Nenhuma safra cadastrada</div>"
-  } else {
-    html += "<table style=\"width:100%;border-collapse:collapse;font-size:12px\">"
-    html += "<thead><tr style=\"background:#f8f9fa\"><th style=\"padding:8px;text-align:left;border-bottom:1px solid #eee;color:#555\">Safra</th><th style=\"padding:8px;text-align:left;border-bottom:1px solid #eee;color:#555\">Cultura</th><th style=\"padding:8px;text-align:right;border-bottom:1px solid #eee;color:#555\">Prod. sc/ha</th><th style=\"padding:8px;text-align:center;border-bottom:1px solid #eee;color:#555\">Status</th></tr></thead><tbody>"
-    safras.slice(0,8).forEach(function(s){
-      var stCor = s.status==="aberto"?"#2d7d32":s.status==="encerrado"?"#1565c0":"#9e9e9e";
-      html += "<tr style=\"border-bottom:1px solid #f9f9f9\">"
-      html += "<td style=\"padding:8px;font-weight:600\">"+s.nome+"</td>"
-      html += "<td style=\"padding:8px;color:#666\">"+s.cultura+" "+s.ano_agricola+"</td>"
-      html += "<td style=\"padding:8px;text-align:right\">"+fmtSc(s.produtividade_sc_ha||0)+"</td>"
-      html += "<td style=\"padding:8px;text-align:center\"><span style=\"background:"+stCor+"20;color:"+stCor+";padding:2px 8px;border-radius:10px;font-size:10px;font-weight:600\">"+s.status+"</span></td>"
-      html += "</tr>"
+    html += "<div style=\"display:flex;align-items:center;gap:16px;height:100%\">";
+    html += "<div style=\"flex:0 0 180px\"><canvas id=\"chartDoughnut\" height=\"180\"></canvas></div>";
+    html += "<div style=\"flex:1\">";
+    var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mao de Obra",v:catTotals["Mao de Obra"],c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
+    catEntries.forEach(function(e){
+      var pct = totalDesp > 0 ? (e.v / totalDesp * 100).toFixed(1) : 0;
+      html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:10px\">";
+      html += "<div style=\"width:12px;height:12px;border-radius:2px;background:"+e.c+";flex-shrink:0\"></div>";
+      html += "<div style=\"flex:1;font-size:12px;color:#555\">"+e.n+"</div>";
+      html += "<div style=\"font-size:12px;font-weight:600;color:#333\">"+pct+"%</div>";
+      html += "</div>";
     });
-    html += "</tbody></table>"
+    html += "<div style=\"margin-top:8px;padding-top:8px;border-top:1px solid #eee;font-size:12px;color:#666\">Total: "+fmtBrl(totalDesp)+"</div>";
+    html += "</div></div>";
   }
-  html += "</div>"
-  html += "</div>"
-
-  html += "</div>"
-
-  // RENDER
-  c.innerHTML = "<div style=\"padding:16px\">" + html + "</div>";
-
-  // Destroy any existing Chart instances
-  function safeChart(id) {
-    var existing = Chart.getChart(id);
-    if (existing) existing.destroy();
-    return document.getElementById(id);
+  html += "</div></div>";
+  // Chart 2: Bar Lancamentos
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128197; Lancamentos por Mes</h3>";
+  html += "<div style=\"display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap\">";
+  html += "<span style=\"display:flex;align-items:center;gap:4px;font-size:11px;color:#555\"><span style=\"width:10px;height:10px;background:#c62828;border-radius:2px;display:inline-block\"></span>Despesas</span>";
+  html += "<span style=\"display:flex;align-items:center;gap:4px;font-size:11px;color:#555\"><span style=\"width:10px;height:10px;background:#2d7d32;border-radius:2px;display:inline-block\"></span>Receitas</span>";
+  html += "</div>";
+  html += "<div style=\"height:220px;position:relative\">";
+  if (monthData.length === 0) {
+    html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem lancamento registrado</div>";
+  } else {
+    html += "<canvas id=\"chartBar\" height=\"200\"></canvas>";
   }
+  html += "</div></div>";
+  html += "</div>";
 
-  // CHART 1: Doughnut - Custos por Categoria
-  var ctxD = safeChart("chartDoughnut");
-  if (ctxD) {
-    new Chart(ctxD, {
+  // ROW 2: ROI + Comparativo
+  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128200; ROI por Safra</h3>";
+  html += "<div style=\"height:220px;position:relative\">";
+  if (!fechamentos || fechamentos.length === 0) {
+    html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem fechamentos para comparar</div>";
+  } else {
+    html += "<canvas id=\"chartRoi\" height=\"180\"></canvas>";
+  }
+  html += "</div></div>";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#127981; Custo por Fazenda</h3>";
+  html += "<div style=\"height:220px;position:relative\">";
+  if (fazendas.length === 0) {
+    html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem fazendas para comparar</div>";
+  } else {
+    html += "<canvas id=\"chartCompar\" height=\"180\"></canvas>";
+  }
+  html += "</div></div>";
+  html += "</div>";
+
+  // ROW 3: Top Insumos + Safras Performance table
+  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 14px;font-size:14px;color:#333\">&#127807; Top Insumos por Custo</h3>";
+  var insByInsumo = {};
+  lancs.filter(function(l){return l.tipo==="despesa" && l.insumo_id;}).forEach(function(l){
+    var nome = l.insumos ? l.insumos.nome : l.insumo_id;
+    insByInsumo[nome] = (insByInsumo[nome]||0) + parseFloat(l.custo_total||0);
+  });
+  var topInsumos = Object.keys(insByInsumo).map(function(k){return {n:k,v:insByInsumo[k]};}).sort(function(a,b){return b.v-a.v;}).slice(0,5);
+  if (topInsumos.length === 0) {
+    html += "<div style=\"color:#bbb;font-size:13px;text-align:center;padding:20px\">Sem dados de insumos</div>";
+  } else {
+    topInsumos.forEach(function(ins,i){
+      var pct = totalDesp > 0 ? (ins.v / totalDesp * 100).toFixed(1) : 0;
+      html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:10px\">";
+      html += "<div style=\"width:20px;height:20px;border-radius:50%;background:#e8f5e9;display:flex;align-items:center;justify-content:center;font-size:10px;color:#2d7d32;font-weight:700\">"+(i+1)+"</div>";
+      html += "<div style=\"flex:1\">";
+      html += "<div style=\"font-size:12px;color:#333;font-weight:500\">"+ins.n+"</div>";
+      html += "<div style=\"height:4px;background:#eee;border-radius:2px;margin-top:3px\">";
+      html += "<div style=\"height:4px;background:#2d7d32;border-radius:2px;width:"+Math.min(pct,100)+"%\"></div></div>";
+      html += "</div>";
+      html += "<div style=\"font-size:11px;color:#666;white-space:nowrap\">"+fmtBrl(ins.v)+"</div>";
+      html += "</div>";
+    });
+  }
+  html += "</div>";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 14px;font-size:14px;color:#333\">&#127758; Performance por Safra</h3>";
+  if (!safras || safras.length === 0) {
+    html += "<div style=\"color:#bbb;font-size:13px;text-align:center;padding:20px\">Sem safras cadastradas</div>";
+  } else {
+    html += "<table style=\"width:100%;border-collapse:collapse;font-size:12px\">";
+    html += "<thead><tr style=\"border-bottom:2px solid #eee\">";
+    html += "<th style=\"text-align:left;padding:4px 6px;color:#666;font-weight:600\">Safra</th>";
+    html += "<th style=\"text-align:center;padding:4px 6px;color:#666;font-weight:600\">Cultura</th>";
+    html += "<th style=\"text-align:right;padding:4px 6px;color:#666;font-weight:600\">Status</th>";
+    html += "</tr></thead><tbody>";
+    safras.slice(0,6).forEach(function(s){
+      var statusColor = s.status==="aberta"?"#2d7d32":s.status==="planejamento"?"#e65100":"#555";
+      html += "<tr style=\"border-bottom:1px solid #f5f5f5\">";
+      html += "<td style=\"padding:6px;color:#333;font-size:11px\">"+s.nome+"</td>";
+      html += "<td style=\"padding:6px;text-align:center;color:#555;font-size:11px\">"+(s.cultura||"-")+"</td>";
+      html += "<td style=\"padding:6px;text-align:right\"><span style=\"background:"+statusColor+"20;color:"+statusColor+";font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600\">"+s.status+"</span></td>";
+      html += "</tr>";
+    });
+    html += "</tbody></table>";
+  }
+  html += "</div>";
+  html += "</div>";
+
+  // ROW 4: Vendas por Cultura + Resumo Geral
+  html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 14px;font-size:14px;color:#333\">&#127807; Vendas por Cultura</h3>";
+  var vendasPorCultura = {};
+  vendas.forEach(function(v){
+    var cult = v.cultura || "outros";
+    if (!vendasPorCultura[cult]) vendasPorCultura[cult] = {sc:0, val:0, qtd:0};
+    vendasPorCultura[cult].sc += parseFloat(v.quantidade_sc||0);
+    vendasPorCultura[cult].val += parseFloat(v.quantidade_sc||0) * parseFloat(v.preco_saca||0);
+    vendasPorCultura[cult].qtd += 1;
+  });
+  var cultColors = {soja:"#2d7d32",milho:"#f9a825",cafe:"#4e342e",cana:"#1565c0",outros:"#9e9e9e"};
+  if (Object.keys(vendasPorCultura).length === 0) {
+    html += "<div style=\"color:#bbb;font-size:13px;text-align:center;padding:20px\">Sem vendas registradas</div>";
+  } else {
+    Object.keys(vendasPorCultura).forEach(function(cult){
+      var d = vendasPorCultura[cult];
+      var col = cultColors[cult] || "#9e9e9e";
+      html += "<div style=\"display:flex;align-items:center;gap:10px;margin-bottom:12px;padding:10px;background:#f9f9f9;border-radius:8px;border-left:3px solid "+col+"\">"
+;      html += "<div style=\"flex:1\">";
+      html += "<div style=\"font-size:13px;font-weight:600;color:#333;text-transform:capitalize\">"+cult+"</div>";
+      html += "<div style=\"font-size:11px;color:#666\">"+fmtSc(d.sc)+" sc &bull; "+d.qtd+" contrato(s)</div>";
+      html += "</div>";
+      html += "<div style=\"font-size:13px;font-weight:700;color:"+col+"\">"+fmtBrl(d.val)+"</div>";
+      html += "</div>";
+    });
+  }
+  html += "</div>";
+  html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
+  html += "<h3 style=\"margin:0 0 14px;font-size:14px;color:#333\">&#9888;&#65039; Alertas do Sistema</h3>";
+  var alertas = [];
+  if (insumos.filter(function(i){return parseFloat(i.estoque_atual||0)<parseFloat(i.estoque_minimo||0);}).length > 0) alertas.push({icon:"&#128994;",txt:"Estoque critico: "+insumos.filter(function(i){return parseFloat(i.estoque_atual||0)<parseFloat(i.estoque_minimo||0);}).length+" insumo(s) abaixo do minimo",cor:"#e65100"});
+  var vencendoCount = vendas.filter(function(v){if(!v.data_entrega)return false;var d=new Date(v.data_entrega);var hoje=new Date();var diff=(d-hoje)/86400000;return diff>=0&&diff<=30&&v.status!=="entregue";}).length;
+  if (vencendoCount > 0) alertas.push({icon:"&#128336;",txt:"Contratos vencendo em 30 dias: "+vencendoCount,cor:"#f9a825"});
+  if (safras.filter(function(s){return s.status==="aberta";}).length === 0) alertas.push({icon:"&#128200;",txt:"Nenhuma safra aberta no momento",cor:"#1565c0"});
+  if (alertas.length === 0) {
+    html += "<div style=\"display:flex;align-items:center;gap:10px;padding:16px;background:#e8f5e9;border-radius:8px;color:#2d7d32;font-size:13px\">&#9989; Sem alertas - sistema operando normalmente</div>";
+  } else {
+    alertas.forEach(function(a){
+      html += "<div style=\"display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:"+a.cor+"15;border-radius:8px;border-left:3px solid "+a.cor+";margin-bottom:8px\">";
+      html += "<span style=\"font-size:16px\">"+a.icon+"</span>";
+      html += "<span style=\"font-size:12px;color:#333\">"+a.txt+"</span>";
+      html += "</div>";
+    });
+  }
+  html += "</div>";
+  html += "</div>";
+
+  html += "</div>";
+  c.innerHTML = html;
+
+
+new Chart(ctxD, {
       type: "doughnut",
       data: {
         labels: ["Insumos","Mao de Obra","Maquinas","Outros"],

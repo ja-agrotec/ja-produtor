@@ -149,7 +149,7 @@ window.module_dashboard = async function() {
   html += "<span style=\"display:flex;align-items:center;gap:4px;font-size:11px;color:#555\"><span style=\"width:10px;height:10px;background:#2d7d32;border-radius:2px;display:inline-block\"></span>Receitas</span>";
   html += "</div>";
   html += "<div style=\"height:220px;position:relative\">";
-  if (monthData.length === 0) {
+  if (monthKeys.length === 0) {
     html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem lancamento registrado</div>";
   } else {
     html += "<canvas id=\"chartBar\" height=\"200\"></canvas>";

@@ -141,7 +141,7 @@ window.module_qualidade_lotes = async function() {
         ?"<textarea id=\"qp_"+p.k+"\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">"+val+"</textarea>"
         :"<input type=\""+p.tipo+"\" id=\"qp_"+p.k+"\" value=\""+val+"\""+( p.tipo==="number"?" step=\"0.01\"":"")+" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">";
       return "<div style=\"margin-bottom:10px\">"
-        +"<label style=\"display:block;font-size:11px;color:#555;margin-bottom:3px;font-weight:600\">"+p.l+(p.un?" ("+p.un+")":"")+"</label>"
+        +"<label style=\"display:block;font-size:11px;color:#555;margin-bottom:3px;font-weight:600\">"+p.l+"</label>"
         +inp+"</div>";
     }).join("");
   }

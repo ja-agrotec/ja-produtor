@@ -12,6 +12,7 @@ window.module_qualidade_lotes = async function() {
   var analises = aRes.error ? [] : (aRes.data || []);
   function getMeta(a, key) { var d=a.dados_qualidade||{}; return d["_"+key]||""; }
   function fmtDate(d) { if(!d) return ""; var p=d.split("-"); return p[2]+"/"+p[1]+"/"+p[0]; }
+  var cultMap = {cafe:"Cafe",soja:"Soja",milho:"Milho",cana:"Cana"};
   var culturaParams = {
     cafe: [
       {k:"umidade",l:"Umidade (%)",tipo:"number",un:"%",alertaAcima:12},
@@ -68,6 +69,39 @@ window.module_qualidade_lotes = async function() {
     else if(estado.modo==="detalhe") renderDetalhe(estado.analise);
     else if(estado.modo==="comparar") renderComparar();
   }
+  function buildOptFaz(sel) {
+    return fazendas.map(function(f){
+      return "<option value=\""+f.id+"\"" +(sel===f.id?" selected":"") +">"+f.nome+"</option>";
+    }).join("");
+  }
+  function buildOptSaf(fazId, sel) {
+    var list = fazId ? safras.filter(function(s){return s.fazenda_id===fazId;}) : safras;
+    return list.map(function(s){
+      return "<option value=\""+s.id+"\"" +(sel===s.id?" selected":"") +">"+s.nome+" ("+s.ano_agricola+")</option>";
+    }).join("");
+  }
+  function buildOptTal(fazId, sel) {
+    var list = fazId ? talhoes.filter(function(t){return t.fazenda_id===fazId;}) : talhoes;
+    return list.map(function(t){
+      return "<option value=\""+t.id+"\"" +(sel===t.id?" selected":"") +">"+t.nome+"</option>";
+    }).join("");
+  }
+  function getCultFromSafra(safId) {
+    var s = safras.find(function(x){return x.id===safId;});
+    return s ? s.cultura : "";
+  }
+  function buildParamFields(cult, dadosQ) {
+    var params = culturaParams[cult] || [];
+    return params.map(function(p){
+      var val = dadosQ[p.k]!==undefined ? dadosQ[p.k] : "";
+      var inp = p.tipo==="textarea"
+        ? "<textarea id=\"qp_"+p.k+"\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">"+val+"</textarea>"
+        : "<input type=\""+p.tipo+"\" id=\"qp_"+p.k+"\" value=\""+val+"\"" +(p.tipo==="number"?" step=\"0.01\"":"") +" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">";
+      return "<div style=\"margin-bottom:10px\">"
+        +"<label style=\"display:block;font-size:11px;color:#555;margin-bottom:3px;font-weight:600\">"+p.l+"</label>"
+        +inp+"</div>";
+    }).join("");
+  }
   function renderLista() {
     var filtered = analises.filter(function(a) {
       if(estado.filtroFaz&&a.fazenda_id!==estado.filtroFaz) return false;
@@ -76,11 +110,11 @@ window.module_qualidade_lotes = async function() {
       if(estado.filtroTipo&&getMeta(a,"tipo_analise")!==estado.filtroTipo) return false;
       return true;
     });
-    var optFaz="<option value=\"\">Todas Fazendas</option>"+fazendas.map(function(f){return "<option value=\""+f.id+"\">"+f.nome+"</option>";}).join("");
-    var optSaf="<option value=\"\">Todas Safras</option>"+safras.map(function(s){return "<option value=\""+s.id+"\">"+s.nome+" ("+s.ano_agricola+")</option>";}).join("");
+    var optFaz="<option value=\"\">Todas Fazendas</option>"+buildOptFaz("");
+    var optSaf="<option value=\"\">Todas Safras</option>"+buildOptSaf("","");
     var optCult="<option value=\"\">Todas Culturas</option><option value=\"cafe\">Cafe</option><option value=\"soja\">Soja</option><option value=\"milho\">Milho</option><option value=\"cana\">Cana</option>";
     var optTipo="<option value=\"\">Todos Tipos</option>"+tiposAnalise.map(function(t){return "<option value=\""+t+"\">"+t+"</option>";}).join("");
-    var rows=filtered.length===0
+    var rows = filtered.length===0
       ? "<tr><td colspan=\"8\" style=\"text-align:center;color:#888;padding:30px\">Nenhuma analise. Clique em Nova Analise.</td></tr>"
       : filtered.map(function(a){
           var cult=a.cultura||"";
@@ -111,8 +145,8 @@ window.module_qualidade_lotes = async function() {
           +"<button onclick=\"window._qlNovo()\" style=\"background:#7CB342;color:#fff;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:13px\">+ Nova Analise</button>"
         +"</div></div>"
       +"<div style=\"display:flex;gap:8px;flex-wrap:wrap;background:#f5f5f5;padding:12px;border-radius:8px;margin-bottom:16px\">"
-        +"<select id=\"flFaz\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\">"+optFaz+"</select>"
-        +"<select id=\"flSaf\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\">"+optSaf+"</select>"
+        +"<select id=\"flFaz\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Todas Fazendas</option>"+buildOptFaz("")+"</select>"
+        +"<select id=\"flSaf\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Todas Safras</option>"+buildOptSaf("","")+"</select>"
         +"<select id=\"flCult\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\">"+optCult+"</select>"
         +"<select id=\"flTipo\" onchange=\"window._qlFiltro()\" style=\"padding:6px;border:1px solid #ddd;border-radius:4px\">"+optTipo+"</select>"
         +"<span style=\"padding:6px;color:#888;font-size:12px\">"+filtered.length+" registro(s)</span>"
@@ -133,29 +167,22 @@ window.module_qualidade_lotes = async function() {
     var sc=document.getElementById("flCult"); if(sc&&estado.filtroCult)sc.value=estado.filtroCult;
     var st=document.getElementById("flTipo"); if(st&&estado.filtroTipo)st.value=estado.filtroTipo;
   }
-  function buildParamFields(cult,dadosQ) {
-    var params=culturaParams[cult]||[];
-    return params.map(function(p){
-      var val=dadosQ[p.k]!==undefined?dadosQ[p.k]:"";
-      var inp=p.tipo==="textarea"
-        ?"<textarea id=\"qp_"+p.k+"\" rows=\"2\" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">"+val+"</textarea>"
-        :"<input type=\""+p.tipo+"\" id=\"qp_"+p.k+"\" value=\""+val+"\""+( p.tipo==="number"?" step=\"0.01\"":"")+" style=\"width:100%;padding:6px;border:1px solid #ddd;border-radius:4px;font-size:13px\">";
-      return "<div style=\"margin-bottom:10px\">"
-        +"<label style=\"display:block;font-size:11px;color:#555;margin-bottom:3px;font-weight:600\">"+p.l+"</label>"
-        +inp+"</div>";
-    }).join("");
-  }
-  function renderForm(a){
-    a=a||{};
-    var cultAtual=a.cultura||"cafe";
-    var dadosQ=a.dados_qualidade||{};
-    var optFazF=fazendas.map(function(f){return "<option value=\""+f.id+"\"" +(a.fazenda_id===f.id?" selected":"") +">"+f.nome+"</option>";}).join("");
-    var optSafF=safras.map(function(s){return "<option value=\""+s.id+"\"" +(a.safra_id===s.id?" selected":"") +">"+s.nome+" ("+s.ano_agricola+")</option>";}).join("");
-    var optTalF=talhoes.map(function(t){var tid=dadosQ["_talhao_id"];return "<option value=\""+t.id+"\"" +(tid===t.id?" selected":"") +">"+t.nome+"</option>";}).join("");
-    var optTipoF=tiposAnalise.map(function(t){var mt=dadosQ["_tipo_analise"];return "<option value=\""+t+"\"" +(mt===t?" selected":"") +">"+t+"</option>";}).join("");
-    var pf=buildParamFields(cultAtual,dadosQ);
-    var isRef=dadosQ["_referencia_lote"]===true||dadosQ["_referencia_lote"]==="true";
-    cont.innerHTML="<div style=\"max-width:900px;margin:0 auto;padding:20px\">"
+  function renderForm(a) {
+    a = a || {};
+    var cultAtual = a.cultura || "cafe";
+    var dadosQ = a.dados_qualidade || {};
+    var fazId = a.fazenda_id || "";
+    var safId = a.safra_id || "";
+    var talId = dadosQ["_talhao_id"] || "";
+    var tipoAnSel = dadosQ["_tipo_analise"] || "";
+    var optTipoF = tiposAnalise.map(function(t){return "<option value=\""+t+"\"" +(tipoAnSel===t?" selected":"") +">"+t+"</option>";}).join("");
+    var pf = buildParamFields(cultAtual, dadosQ);
+    var isRef = dadosQ["_referencia_lote"]===true||dadosQ["_referencia_lote"]==="true";
+    // Cultura label para exibicao
+    var cultLabel = culturaLabel[cultAtual] || cultAtual;
+    var cultIcon  = culturaIcon[cultAtual] || "";
+
+    cont.innerHTML = "<div style=\"max-width:900px;margin:0 auto;padding:20px\">"
       +"<div style=\"display:flex;align-items:center;gap:12px;margin-bottom:20px\">"
         +"<button onclick=\"window._qlVoltar()\" style=\"background:#eee;border:none;padding:8px 14px;border-radius:6px;cursor:pointer\">&#8592; Voltar</button>"
         +"<h2 style=\"margin:0;color:#1A2E1A\">"+(a.id?"Editar":"Nova")+" Analise de Qualidade</h2>"
@@ -163,19 +190,17 @@ window.module_qualidade_lotes = async function() {
       +"<div style=\"background:#fff;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.1);padding:24px\">"
         +"<h3 style=\"margin:0 0 14px;color:#1A2E1A;border-bottom:2px solid #7CB342;padding-bottom:6px\">Identificacao</h3>"
         +"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px\">"
-          +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Cultura *</label>"
-            +"<select id=\"fCult\" onchange=\"window._qlMudaCultura()\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\">"
-              +"<option value=\"cafe\"" +(cultAtual==="cafe"?" selected":"")+">Cafe</option>"
-              +"<option value=\"soja\"" +(cultAtual==="soja"?" selected":"")+">Soja</option>"
-              +"<option value=\"milho\"" +(cultAtual==="milho"?" selected":"")+">Milho</option>"
-              +"<option value=\"cana\"" +(cultAtual==="cana"?" selected":"")+">Cana-de-Acucar</option>"
-            +"</select></div>"
           +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Fazenda *</label>"
-            +"<select id=\"fFaz\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione...</option>"+optFazF+"</select></div>"
+            +"<select id=\"fFaz\" onchange=\"window._qlMudaFazenda()\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione a fazenda...</option>"+buildOptFaz(fazId)+"</select></div>"
           +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Safra</label>"
-            +"<select id=\"fSaf\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione...</option>"+optSafF+"</select></div>"
+            +"<select id=\"fSaf\" onchange=\"window._qlMudaSafra()\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione a safra...</option>"+buildOptSaf(fazId,safId)+"</select></div>"
           +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Talhao</label>"
-            +"<select id=\"fTal\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione...</option>"+optTalF+"</select></div>"
+            +"<select id=\"fTal\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione o talhao...</option>"+buildOptTal(fazId,talId)+"</select></div>"
+          +"<div id=\"culturaDisplay\">"
+            +"<label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Cultura *</label>"
+            +"<div id=\"culturaBox\" style=\"padding:8px;border:1px solid #ddd;border-radius:4px;background:#f9f9f9;font-size:14px\">"+( cultAtual ? cultIcon+" "+cultLabel : "<span style=\"color:#999\">Selecione a safra para preencher</span>") +"</div>"
+            +"<input type=\"hidden\" id=\"fCult\" value=\""+cultAtual+"\">"
+          +"</div>"
           +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Tipo de Analise *</label>"
             +"<select id=\"fTipo\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px\"><option value=\"\">Selecione...</option>"+optTipoF+"</select></div>"
           +"<div><label style=\"display:block;font-size:11px;color:#555;font-weight:600;margin-bottom:3px\">Data da Analise *</label>"
@@ -189,8 +214,8 @@ window.module_qualidade_lotes = async function() {
             +"<label for=\"fRef\" style=\"font-size:13px;cursor:pointer\">Analise de referencia do lote</label>"
           +"</div>"
         +"</div>"
-        +"<h3 style=\"margin:0 0 14px;color:#1A2E1A;border-bottom:2px solid #7CB342;padding-bottom:6px\">Parametros de Qualidade</h3>"
-        +"<div id=\"paramArea\" style=\"display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px\">"+pf+"</div>"
+        +"<h3 style=\"margin:0 0 14px;color:#1A2E1A;border-bottom:2px solid #7CB342;padding-bottom:6px\">Parametros de Qualidade <span id=\"cultTag\" style=\"font-size:13px;font-weight:400;color:#7CB342\">"+(cultAtual?cultIcon+" "+cultLabel:"")+"</span></h3>"
+        +"<div id=\"paramArea\" style=\"display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px\">" + (cultAtual?pf:"<p style=\"color:#999;grid-column:1/-1\">Selecione a safra para ver os parametros.</p>") + "</div>"
         +"<h3 style=\"margin:14px 0 10px;color:#1A2E1A;border-bottom:2px solid #7CB342;padding-bottom:6px\">Observacoes</h3>"
         +"<textarea id=\"fObs\" rows=\"3\" placeholder=\"Observacoes gerais...\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:13px\">"+(a.observacoes||"")+"</textarea>"
         +"<div style=\"display:flex;gap:8px;justify-content:flex-end;margin-top:16px\">"
@@ -298,10 +323,52 @@ window.module_qualidade_lotes = async function() {
     if(estado.comparando.length<2){alert("Selecione pelo menos 2 analises.");return;}
     estado.modo="comparar";renderComparar();
   };
-  window._qlMudaCultura=function(){
-    var el=document.getElementById("fCult");if(!el) return;
-    var pf=buildParamFields(el.value,{});
-    var area=document.getElementById("paramArea");if(area) area.innerHTML=pf;
+  // CASCADE: ao mudar fazenda -> filtra safras e talhoes
+  window._qlMudaFazenda=function(){
+    var fazEl=document.getElementById("fFaz");
+    var fazId=fazEl?fazEl.value:"";
+    // Atualiza safras filtradas por fazenda
+    var safEl=document.getElementById("fSaf");
+    if(safEl){
+      safEl.innerHTML="<option value=\"\">Selecione a safra...</option>"+buildOptSaf(fazId,"");
+    }
+    // Atualiza talhoes filtrados por fazenda
+    var talEl=document.getElementById("fTal");
+    if(talEl){
+      talEl.innerHTML="<option value=\"\">Selecione o talhao...</option>"+buildOptTal(fazId,"");
+    }
+    // Limpa cultura (depende da safra)
+    var cultEl=document.getElementById("fCult");
+    if(cultEl) cultEl.value="";
+    var cultBox=document.getElementById("culturaBox");
+    if(cultBox) cultBox.innerHTML="<span style=\"color:#999\">Selecione a safra para preencher</span>";
+    var cultTag=document.getElementById("cultTag");
+    if(cultTag) cultTag.innerHTML="";
+    // Limpa parametros
+    var paramArea=document.getElementById("paramArea");
+    if(paramArea) paramArea.innerHTML="<p style=\"color:#999;grid-column:1/-1\">Selecione a safra para ver os parametros.</p>";
+  };
+  // CASCADE: ao mudar safra -> preenche cultura automaticamente
+  window._qlMudaSafra=function(){
+    var safEl=document.getElementById("fSaf");
+    var safId=safEl?safEl.value:"";
+    var cult=getCultFromSafra(safId);
+    // Atualiza campo oculto de cultura
+    var cultEl=document.getElementById("fCult");
+    if(cultEl) cultEl.value=cult;
+    // Atualiza display de cultura
+    var icon=culturaIcon[cult]||"";
+    var lbl=culturaLabel[cult]||cult||"Nao identificado";
+    var cultBox=document.getElementById("culturaBox");
+    if(cultBox) cultBox.innerHTML = cult ? icon+" "+lbl : "<span style=\"color:#999\">Nao identificado na safra</span>";
+    var cultTag=document.getElementById("cultTag");
+    if(cultTag) cultTag.innerHTML=cult?icon+" "+lbl:"";
+    // Atualiza campos de parametros
+    var paramArea=document.getElementById("paramArea");
+    if(paramArea){
+      if(cult) { paramArea.innerHTML=buildParamFields(cult,{}); }
+      else { paramArea.innerHTML="<p style=\"color:#999;grid-column:1/-1\">A safra selecionada nao tem cultura definida.</p>"; }
+    }
   };
   window._qlSalvar=async function(){
     var cult=(document.getElementById("fCult")||{}).value||"";
@@ -314,7 +381,7 @@ window.module_qualidade_lotes = async function() {
     var loteR=(document.getElementById("fLote")||{}).value||null;
     var isRef=(document.getElementById("fRef")||{}).checked||false;
     var obs=(document.getElementById("fObs")||{}).value||null;
-    if(!cult||!fazId||!data||!tipoAn){alert("Preencha: Cultura, Fazenda, Tipo e Data.");return;}
+    if(!cult||!fazId||!data||!tipoAn){alert("Preencha: Fazenda, Tipo de Analise e Data. A Cultura e preenchida automaticamente pela Safra.");return;}
     var params=culturaParams[cult]||[];
     var dadosQ={};
     params.forEach(function(p){

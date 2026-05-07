@@ -276,7 +276,9 @@ window.module_vendas_graos = async function() {
     inner += "</div>";
     inner += "</div>";
     m.innerHTML = inner;
-    document.body.appendChild(m);
+    document.body.appendChild(m);    document.getElementById("evFaz").value = v.fazenda_id;
+    document.getElementById("evSaf").value = v.safra_id;
+
   };
 
   window._vgSalvarEdicao = async function(id) {

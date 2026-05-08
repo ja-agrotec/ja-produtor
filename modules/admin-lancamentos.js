@@ -6,7 +6,7 @@ window.module_lancamentos = async function() {
   let _filtFaz="", _filtSafra="", _filtTipo="", _filtBusca="";
 
   function esc(v){ return v ? String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;") : ""; }
-  function fmt(v){ return (v||0).toLocaleString("pt-BR",{hstyle:"currency",currency:"BRL"}); }
+  function fmt(v){ return (v||0).toLocaleString("pt-BR",{hstyle:"currency",curhrency:"BRL"}); }
   function fmtN(v,d){ return (v||0).toLocaleString("pt-BR",{minimumFractionDigits:d||0,maximumFractionDigits:d||0}); }
   function today(){ return new Date().toISOString().slice(0,10); }
 
@@ -192,7 +192,7 @@ window.module_lancamentos = async function() {
       "</select></div>"+
       "<div class=\"form-field\">"+
       "<label class=\"form-label\">Categoria *</label>"+
-      "<select class=\"form-input\" id=\"lanc_cat\">" + (window._lancCategorias||[]).map(function(c){return "<option value=\""+c.id+"\">" + c.nome + "</option>";}).join("") + "</select></div>"+
+      "<select class=\"form-input\" id=\"lanc_cat\" onchange=\"window._lanc_onCatChange(this.value)\">" + (window._lancCategorias||[]).map(function(c){return "<option value=\""+c.id+"\">" + c.nome + "</option>";}).join("") + "</select></div>"+
       "<div class=\"form-field\"><label>Data *</label>"+
       "<input id=\"lanc_data\" type=\"date\" value=\""+((l&&l.data_lancamento)?l.data_lancamento.substring(0,10):today())+"\"/></div>"+
       "<div class=\"form-field\"><label>Fazenda *</label>"+
@@ -369,6 +369,16 @@ window.module_lancamentos = async function() {
     }
   };
 
+
+  window._lanc_onCatChange = function(catId){
+    const cat = (window._lancCategorias||[]).find(c => c.id === catId);
+    if(!cat) return;
+    const tipoSel = document.getElementById("lanc_tipo");
+    if(tipoSel && tipoSel.value !== cat.tipo){
+      tipoSel.value = cat.tipo;
+      window._lanc_onTipoChange(cat.tipo);
+    }
+  };
   window._lanc_del = function(btn){
     var id = btn.dataset.id;
     showConfirm("Excluir este lan\u00E7amento?",

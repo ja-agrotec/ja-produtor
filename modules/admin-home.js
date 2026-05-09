@@ -111,7 +111,7 @@ window.module_home = async function() {
       if(code<=99) return "âï¸";
       return "ð¡ï¸";
     }
-    var dayNames = ["Dom","Seg","Ter","Qua","Qui","Sex","SÃ¡b"];
+    var dayNames = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
     var forecastHtml = "";
     for(var _d=1; _d<=3; _d++){
       if(!wDaily.time || !wDaily.time[_d]) break;
@@ -140,7 +140,7 @@ window.module_home = async function() {
       + "</div>"
       + "<div style=\"display:flex;gap:6px;margin-top:4px\">"+forecastHtml+"</div>"
       + "</div>";
-  } catch(e) { climaHtml = "<div style=\"color:#ccc;font-size:12px\">Clima indisponÃ­vel</div>"; }
+  } catch(e) { climaHtml = "<div style=\"color:#ccc;font-size:12px\">Clima indisponível</div>"; }
 
 var html = "";
   // HERO BANNER
@@ -152,7 +152,7 @@ var html = "";
   })();
   var _nomeFazExib = _homeFazObj ? _homeFazObj.nome : (fazendas.length === 1 ? fazendas[0].nome : null);
   var _saudMsg = _nomeFazExib
-    ? _saudacao + ", Produtor! Bem-vindo Ã  <strong>" + _nomeFazExib + "</strong>"
+    ? _saudacao + ", Produtor! Bem-vindo à <strong>" + _nomeFazExib + "</strong>"
     : _saudacao + ", Produtor!";
   var _fazSelectOpts = "<option value=\"todas\"" + (_homeFazSel==="todas"?" selected":"") + ">ðï¸ Todas as Fazendas</option>"
     + fazendas.map(function(f){ return "<option value=\""+f.id+"\"" + (f.id===_homeFazSel?" selected":"") + ">"+f.nome+"</option>"; }).join("");

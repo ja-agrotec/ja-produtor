@@ -22,7 +22,7 @@ window.module_dashboard = async function() {
     sb.from("talhoes").select("id,nome,area_ha,fazenda_id").eq("ativo",true),
     sb.from("insumos").select("id,nome,estoque_atual,estoque_minimo,preco_unitario").eq("ativo",true),
     sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola),fazendas(nome)").order("criado_em",{ascending:false}).limit(10),
-    sb.from("vendas_grãos").select("*").order("criado_em",{ascending:false}).limit(50)
+    sb.from("vendas_grÃ£os").select("*").order("criado_em",{ascending:false}).limit(50)
   ]);
 
   var fazendas = (fazRes.data || []);
@@ -107,11 +107,11 @@ window.module_dashboard = async function() {
   // RENDER HTML
   var html = "";
   // Seletor de fazenda no dashboard
-  var _dashFazSelectOpts = "<option value=\"todas\"" + (_dashFazSel==="todas"?" selected":"") + ">ðï¸ Todas as Fazendas</option>"
+  var _dashFazSelectOpts = "<option value=\"todas\"" + (_dashFazSel==="todas"?" selected":"") + ">Ã°ÂÂÂÃ¯Â¸Â Todas as Fazendas</option>"
     + fazendas.map(function(f){ return "<option value=\""+f.id+"\"" + (f.id===_dashFazSel?" selected":"") + ">"+f.nome+"</option>"; }).join("");
-  var _dashFazLabel = _dashFazObj ? " â " + _dashFazObj.nome : "";
+  var _dashFazLabel = _dashFazObj ? " Ã¢ÂÂ " + _dashFazObj.nome : "";
   html += "<div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px\">"
-       + "<h2 style=\"margin:0;font-size:20px\">ð Dashboard Analytics Â· GrÃ¡ficos e KPIs" + _dashFazLabel + "</h2>"
+       + "<h2 style=\"margin:0;font-size:20px\">Ã°ÂÂÂ Dashboard Analytics ÃÂ· GrÃÂ¡ficos e KPIs" + _dashFazLabel + "</h2>"
        + "<select onchange=\"window._dashChangeFaz(this.value)\" style=\"border:1px solid #ccc;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;\">"
        + _dashFazSelectOpts + "</select></div>";
   html += "<div style=\"max-width:1280px;margin:0 auto;padding:0\">"
@@ -119,7 +119,7 @@ window.module_dashboard = async function() {
   // Header
   html += "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:20px\">"
   html += "<div><h2 style=\"margin:0;font-size:22px;color:#1a2e1a\">&#128200; Dashboard Gerencial</h2>"
-  html += "<p style=\"margin:4px 0 0;color:#888;font-size:13px\">Análise completa da operacao agricola em tempo real</p></div>"
+  html += "<p style=\"margin:4px 0 0;color:#888;font-size:13px\">AnÃ¡lise completa da operação agrícola em tempo real</p></div>"
   html += "<div style=\"font-size:12px;color:#bbb\">Atualizado: "+new Date().toLocaleTimeString("pt-BR")+"</div>"
   html += "</div>"
 
@@ -132,7 +132,7 @@ window.module_dashboard = async function() {
       +"<div style=\"font-size:11px;color:#999\">"+sub+"</div></div>";
   }
   html += kpi("Fazendas",(_dashFazSel !== 'todas' ? 1 : fazendas.length),"Ativas","#2d7d32","&#127968; ");
-  html += kpi("Lancamentos",lancs.length,"Confirmados","#1565c0","&#128196; ");
+  html += kpi("Lançamentos",lancs.length,"Confirmados","#1565c0","&#128196; ");
   html += kpi("Custo Total",fmtBrl(totalDesp),"Despesas","#c62828","");
   html += kpi("Receita Vendas",fmtBrl(totalVendas),"Contratos","#2d7d32","");
   html += kpi("Sacas Vendidas",fmtSc(totalSacas)+" sc","Contratos","#7b1fa2","&#127807; ");
@@ -145,7 +145,7 @@ window.module_dashboard = async function() {
   html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">";
   // Chart 1: Doughnut Custos
   html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
-  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128202; Composicao de Custos</h3>";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128202; Composição de Custos</h3>";
   html += "<div style=\"height:280px;position:relative\">";
   if (totalDesp === 0) {
     html += "<div style=\"display:flex;align-items:center;justify-content:center;height:100%;color:#bbb;font-size:14px\">Sem lancamentos registrados</div>";
@@ -153,7 +153,7 @@ window.module_dashboard = async function() {
     html += "<div style=\"display:flex;align-items:center;gap:16px;height:100%\">";
     html += "<div style=\"flex:0 0 180px\"><canvas id=\"chartDoughnut\" height=\"180\"></canvas></div>";
     html += "<div style=\"flex:1\">";
-    var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mao de Obra",v:catTotals.MaoDeObra,c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
+    var catEntries = [{n:"Insumos",v:catTotals.Insumos,c:"#2d7d32"},{n:"Mão de Obra",v:catTotals.MaoDeObra,c:"#1565c0"},{n:"Maquinas",v:catTotals.Maquinas,c:"#e65100"},{n:"Outros",v:catTotals.Outros,c:"#9e9e9e"}];
     catEntries.forEach(function(e){
       var pct = totalDesp > 0 ? (e.v / totalDesp * 100).toFixed(1) : 0;
       html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:10px\">";
@@ -168,7 +168,7 @@ window.module_dashboard = async function() {
   html += "</div></div>";
   // Chart 2: Bar Lancamentos
   html += "<div style=\"background:#fff;border-radius:12px;padding:20px;box-shadow:0 1px 4px rgba(0,0,0,0.08)\">";
-  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128197; Lancamentos por Mes</h3>";
+  html += "<h3 style=\"margin:0 0 12px;font-size:14px;color:#333\">&#128197; Lançamentos por Mês</h3>";
   html += "<div style=\"display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap\">";
   html += "<span style=\"display:flex;align-items:center;gap:4px;font-size:11px;color:#555\"><span style=\"width:10px;height:10px;background:#c62828;border-radius:2px;display:inline-block\"></span>Despesas</span>";
   html += "<span style=\"display:flex;align-items:center;gap:4px;font-size:11px;color:#555\"><span style=\"width:10px;height:10px;background:#2d7d32;border-radius:2px;display:inline-block\"></span>Receitas</span>";
@@ -317,7 +317,7 @@ window.module_dashboard = async function() {
     new Chart(ctxD, {
       type: "doughnut",
       data: {
-        labels: ["Insumos","Mao de Obra","Maquinas","Outros"],
+        labels: ["Insumos","Mão de Obra","Maquinas","Outros"],
         datasets: [{ data: [catTotals.Insumos, catTotals.MaoDeObra, catTotals.Maquinas, catTotals.Outros], backgroundColor: ["#2d7d32","#1565c0","#e65100","#9e9e9e"], borderWidth: 0 }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, cutout: "70%" }

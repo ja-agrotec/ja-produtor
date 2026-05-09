@@ -139,24 +139,24 @@ window.module_insumos = async function() {
       + '<div style="margin-bottom:14px"><label style="font-size:12px;color:#555;display:block;margin-bottom:4px">Motivo / Observação</label>'
       + '<input id="mov_motivo" type="text" placeholder="Ex: Compra NF 1234, Aplicação talhão T-01..." style="width:100%;border:1px solid #ccc;border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box"></div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end">'
-      + '<button onclick="document.getElementById('ins_modal_mov').remove()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
-      + '<button onclick="window._ins_salvarMov(''+insId+'')" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Confirmar</button>'
+      + '<button onclick="window._ins_closeMov()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
+      + '<button onclick="window._ins_doMov()" style="background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Confirmar</button>'
       + '</div></div>';
     document.body.appendChild(modal);
   };
 
-  window._ins_salvarMov = async function(insId) {
+  window._ins_doMov = async function() {
     var tipo = document.getElementById('mov_tipo').value;
     var qtd = parseFloat(document.getElementById('mov_qtd').value) || 0;
     var novFazId = document.getElementById('mov_fazenda').value || null;
     if (qtd <= 0) { alert('Informe uma quantidade válida.'); return; }
-    var ins = _insumos.find(function(i){ return i.id===insId; });
+    var ins = _insumos.find(function(i){ return i.id===_movId; });
     var novoEst = parseFloat(ins.estoque_atual||0);
     if (tipo==='entrada') novoEst += qtd;
     else if (tipo==='saida') novoEst = Math.max(0, novoEst - qtd);
     else novoEst = qtd;
     var upd = { estoque_atual: novoEst, fazenda_id: novFazId, atualizado_em: new Date().toISOString() };
-    var {error} = await sb.from('insumos').update(upd).eq('id', insId);
+    var {error} = await sb.from('insumos').update(upd).eq('id', _movId);
     if (error) { alert('Erro: '+error.message); return; }
     document.getElementById('ins_modal_mov').remove();
     await render();
@@ -187,17 +187,18 @@ window.module_insumos = async function() {
       + '<input id="transf_obs" type="text" placeholder="Ex: Abastecimento safra verão..." style="width:100%;border:1px solid #ccc;border-radius:6px;padding:7px 10px;font-size:13px;box-sizing:border-box"></div>'
       + '<p style="font-size:11px;color:#888;margin:0 0 12px">A transferência reduz o estoque da origem e aumenta (ou cria) na fazenda destino.</p>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end">'
-      + '<button onclick="document.getElementById('ins_modal_transf').remove()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
-      + '<button onclick="window._ins_confirmarTransf(''+insId+'')" style="background:#e65100;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Transferir →</button>'
+      + '<button onclick="window._ins_closeTransf()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
+      + '<button onclick="window._ins_doTransf()" style="background:#e65100;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Transferir →</button>'
       + '</div></div>';
+    _transfId = insId;
     document.body.appendChild(modal);
   };
 
-  window._ins_confirmarTransf = async function(insId) {
+  window._ins_doTransf = async function() {
     var qtd = parseFloat(document.getElementById('transf_qtd').value)||0;
     var destId = document.getElementById('transf_dest').value;
     if (qtd<=0){ alert('Informe uma quantidade válida.'); return; }
-    var ins = _insumos.find(function(i){ return i.id===insId; });
+    var ins = _insumos.find(function(i){ return i.id===_transfId; });
     if (qtd>parseFloat(ins.estoque_atual||0)){ alert('Quantidade maior que o estoque disponível ('+ins.estoque_atual+' '+ins.unidade+').'); return; }
     var insDestino = _insumos.find(function(i){ return i.nome===ins.nome && i.fazenda_id===destId && i.ativo; });
     try {
@@ -206,7 +207,7 @@ window.module_insumos = async function() {
       } else {
         await sb.from('insumos').insert([{ nome:ins.nome, categoria:ins.categoria, unidade:ins.unidade, principio_ativo:ins.principio_ativo, fabricante:ins.fabricante, registro_mapa:ins.registro_mapa, estoque_atual:qtd, estoque_minimo:ins.estoque_minimo, preco_unitario:ins.preco_unitario, fazenda_id:destId, ativo:true }]);
       }
-      await sb.from('insumos').update({ estoque_atual: parseFloat(ins.estoque_atual||0)-qtd, atualizado_em: new Date().toISOString() }).eq('id', insId);
+      await sb.from('insumos').update({ estoque_atual: parseFloat(ins.estoque_atual||0)-qtd, atualizado_em: new Date().toISOString() }).eq('id', _transfId);
       document.getElementById('ins_modal_transf').remove();
       await render();
     } catch(e){ alert('Erro: '+e.message); }
@@ -239,13 +240,14 @@ window.module_insumos = async function() {
       + '<div><label style="font-size:11px;color:#555;display:block;margin-bottom:3px">Preço (R$)</label><input id="ins_preco" type="number" min="0" step="0.01" value="'+(v.preco_unitario||'')+'" style="width:100%;border:1px solid #ccc;border-radius:6px;padding:6px 8px;font-size:13px;box-sizing:border-box"></div>'
       + '</div>'
       + '<div style="display:flex;gap:8px;justify-content:flex-end">'
-      + '<button onclick="document.getElementById('ins_modal_form').remove()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
-      + '<button onclick="window._ins_salvar(''+( insId||''  )+'')" style="background:#2d7d32;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Salvar</button>'
+      + '<button onclick="window._ins_closeForm()" style="border:1px solid #ccc;background:#fff;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer">Cancelar</button>'
+      + '<button onclick="window._ins_doForm()" style="background:#2d7d32;color:#fff;border:none;border-radius:6px;padding:8px 16px;font-size:13px;cursor:pointer;font-weight:600">Salvar</button>'
       + '</div></div>';
+    _formId = insId;
     document.body.appendChild(modal);
   };
 
-  window._ins_salvar = async function(insId) {
+  window._ins_doForm = async function() {
     var dados = {
       nome: (document.getElementById('ins_nome').value||'').trim(),
       categoria: document.getElementById('ins_cat').value,
@@ -258,8 +260,8 @@ window.module_insumos = async function() {
       ativo: true, atualizado_em: new Date().toISOString()
     };
     if (!dados.nome){ alert('Informe o nome do insumo.'); return; }
-    var {error} = insId
-      ? await sb.from('insumos').update(dados).eq('id', insId)
+    var {error} = _formId
+      ? await sb.from('insumos').update(dados).eq('id', _formId)
       : await sb.from('insumos').insert([dados]);
     if (error){ alert('Erro: '+error.message); return; }
     document.getElementById('ins_modal_form').remove();

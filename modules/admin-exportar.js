@@ -121,7 +121,7 @@ window.module_exportar = async function() {
   window._exp_safras = async function() {
     toast('Preparando exportação...','ok');
     const fazId = document.getElementById('exp_faz_saf').value;
-    let q = sb.from('safras').select('nome, fazendas(nome), cultura, ano_agricola, data_plantio, data_colheita, area_ha, producao_sc, produtividade_sc_ha, custo_total, receita_total, status').order('nome');
+    let q = sb.from('safras').select('nome, fazendas(nome), cultura, ano_agricola, data_plantio, data_colheita, area_ha, produção_sc, produtividade_sc_ha, custo_total, receita_total, status').order('nome');
     if(fazId) q = q.eq('fazenda_id',fazId);
     const { data, error } = await q;
     if(error){ toast('Erro: '+error.message,'bad'); return; }
@@ -134,7 +134,7 @@ window.module_exportar = async function() {
       csvVal(fmtD(s.data_plantio)),
       csvVal(fmtD(s.data_colheita)),
       csvVal(fmtR(s.area_ha)),
-      csvVal(fmtR(s.producao_sc)),
+      csvVal(fmtR(s.produção_sc)),
       csvVal(fmtR(s.produtividade_sc_ha)),
       csvVal(fmtR(s.custo_total)),
       csvVal(fmtR(s.receita_total)),

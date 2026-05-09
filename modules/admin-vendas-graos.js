@@ -9,7 +9,7 @@ window.module_vendas_graos = async function() {
   var safras = (sRes.data || []);
   var vRes = await sb.from("vendas_graos").select("*,fazendas(nome,certificada,tipo_certificacao),safras(nome,cultura)").order("criado_em",{ascending:false});
   var vendas = (vRes.data || []);
-  var eRes = await sb.from("entregas_graos").select("*,vendas_graos(cultura,tipo_contrato),talhoes(nome)");
+  var eRes = await sb.from("entregas_grãos").select("*,vendas_graos(cultura,tipo_contrato),talhoes(nome)");
   var entregas = (eRes.data || []);
   var qRes = await sb.from("qualidade_registro").select("id,fazenda_id,safra_id,cultura,data_registro,fazendas(nome)").order("data_registro",{ascending:false});
   var qualidades = (qRes.data || []);
@@ -26,7 +26,7 @@ window.module_vendas_graos = async function() {
   var precoMedio = totalContratado > 0 ? (totalReceita/totalContratado) : 0;
   var saldoEntregar = totalContratado - totalEntregue;
 
-  var fazOpts = fazendas.map(function(f){ return "<option value=\"" + f.id + "\">" + f.nome + (f.certificada?" ✓":"") + "</option>"; }).join("");
+  var fazOpts = fazendas.map(function(f){ return "<option value=\"" + f.id + "\">" + f.nome + (f.certificada?" â":"") + "</option>"; }).join("");
 
   function fmtSc(n){ return parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:0,maximumFractionDigits:1}); }
   function fmtBrl(n){ return "R$ " + parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -103,21 +103,21 @@ window.module_vendas_graos = async function() {
   html += "<div style=\"font-size:11px;color:#888\">Pm: " + fmtBrl(precoMedio) + "/sc</div></div>";
   html += "</div>";
 
-  // ---- FORMULÁRIO NOVO CONTRATO ----
+  // ---- FORMULÃRIO NOVO CONTRATO ----
   html += "<div id=\"vgFormPanel\" style=\"display:none;background:#fff;border-radius:12px;padding:20px;box-shadow:0 2px 8px rgba(0,0,0,0.1);margin-bottom:20px\">";
   html += "<h3 style=\"margin:0 0 16px;font-size:16px\">&#128196; Novo Contrato de Venda</h3>";
   html += "<div style=\"display:grid;grid-template-columns:repeat(3,1fr);gap:12px\">";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Fazenda *</label><select id=\"vgFazenda\" onchange=\"window._vgMudaFazenda();\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"\">Selecione...</option>" + fazOpts + "</select></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Safra *</label><select id=\"vgSafra\" onchange=\"window._vgMudaSafra();\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"\">Selecione a fazenda primeiro...</option></select></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Cultura</label><input id=\"vgCultura\" type=\"text\" readonly placeholder=\"Auto apos selecionar safra\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box;background:#f9f9f9\"></div>";
-  html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Tipo Contrato *</label><select id=\"vgTipoContrato\" onchange=\"window._vgCheckExportacao();\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"disponivel\">Disponivel</option><option value=\"forward\">Forward (Prazo)</option><option value=\"troca\">Troca (Barter)</option><option value=\"fixacao\">Fixacao</option><option value=\"cbot\">CBOT (Bolsa)</option><option value=\"exportacao\">Exportacao</option></select></div>";
+  html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Tipo Contrato *</label><select id=\"vgTipoContrato\" onchange=\"window._vgCheckExportacao();\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"disponivel\">Disponível</option><option value=\"forward\">Contrato a Prazo</option><option value=\"troca\">Troca de Insumos</option><option value=\"fixacao\">Fixacao</option><option value=\"cbot\">CBOT (Bolsa)</option><option value=\"exportacao\">Exportacao</option></select></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Qtd Sacas *</label><input id=\"vgQtdSc\" type=\"number\" min=\"0\" step=\"0.001\" placeholder=\"0\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
-  html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Preco/Saca (R$)</label><input id=\"vgPrecoSc\" type=\"number\" min=\"0\" step=\"0.01\" placeholder=\"0.00\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
+  html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Preço/Saca (R$)</label><input id=\"vgPrecoSc\" type=\"number\" min=\"0\" step=\"0.01\" placeholder=\"0.00\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Data Contrato</label><input id=\"vgDataContrato\" type=\"date\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Data Entrega</label><input id=\"vgDataEntrega\" type=\"date\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Comprador</label><input id=\"vgComprador\" type=\"text\" placeholder=\"Nome da trading/exportadora...\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
   html += "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Numero Contrato</label><input id=\"vgNumContrato\" type=\"text\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>";
-  html += "<div style=\"grid-column:1/-1\"><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Analise de Qualidade Vinculada</label><select id=\"vgQualidadeRef\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"\">Nenhuma / Selecionar depois</option></select></div>";
+  html += "<div style=\"grid-column:1/-1\"><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Análise de Qualidade Vinculada</label><select id=\"vgQualidadeRef\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"\">Nenhuma / Selecionar depois</option></select></div>";
   html += "</div>";
   html += "<div id=\"vgExportacaoPanel\" style=\"display:none;margin-top:16px;background:#fff8e1;border:1px solid #f9a825;border-radius:10px;padding:16px\">";
   html += "<div style=\"display:flex;align-items:center;gap:8px;margin-bottom:12px\">";
@@ -237,37 +237,37 @@ window.module_vendas_graos = async function() {
 
   window._vgExportacaoItens = [
     { cat:"Documentacao Fiscal", itens:[
-      { id:"exp_nfe", texto:"NF-e de venda emitida (DANFE + XML arquivado)", ref:"Art. 1 do Ajuste SINIEF 07/05 — obrigatorio para saida de mercadorias" },
-      { id:"exp_nfe_exp", texto:"NF-e de Exportacao emitida com CFOP 7.101 / 7.102", ref:"RICMS — CFOP Grupo 7 (Vendas para Exterior)" },
+      { id:"exp_nfe", texto:"NF-e de venda emitida (DANFE + XML arquivado)", ref:"Art. 1 do Ajuste SINIEF 07/05 â obrigatorio para saida de mercadorias" },
+      { id:"exp_nfe_exp", texto:"NF-e de Exportacao emitida com CFOP 7.101 / 7.102", ref:"RICMS â CFOP Grupo 7 (Vendas para Exterior)" },
       { id:"exp_re", texto:"Registro de Exportacao (RE) no SISCOMEX aberto e vinculado a NF-e", ref:"IN RFB 1702/2017 e IN SECEX 14/2020" },
-      { id:"exp_due", texto:"Declaracao Unica de Exportacao (DUE) registrada e averbada no Portal Siscomex", ref:"IN RFB 1702/2017 — substitui DSE/DDE" },
+      { id:"exp_due", texto:"Declaracao Unica de Exportacao (DUE) registrada e averbada no Portal Siscomex", ref:"IN RFB 1702/2017 â substitui DSE/DDE" },
       { id:"exp_di", texto:"Despacho aduaneiro concluido (averbacao do embarque na DUE)", ref:"Instrucao Normativa RFB 1702/2017 Art. 49" },
       { id:"exp_contrato_cambio", texto:"Contrato de cambio registrado no SISBACEN (para contratos superiores a USD 50.000)", ref:"Res. BACEN 3568/2008 e Circular 3691/2013" }
     ]},
     { cat:"Documentacao Sanitaria e Fitossanitaria", itens:[
       { id:"exp_cif", texto:"Certificado de Inspecao Fitossanitaria (CIF) emitido pelo MAPA", ref:"Lei 10.711/2003 e Instrucao Normativa MAPA 59/2019" },
       { id:"exp_cts", texto:"Certificado de Tratamento Sanitario (se exigido pelo pais importador)", ref:"Regulamento CE 2072/2020 e normas equivalentes por pais" },
-      { id:"exp_ppp", texto:"Permissao de Transito de Vegetais (PTV) ou Permissao Previa de Importacao do pais destino recebida", ref:"IN MAPA 36/2006 — transito internacional" },
-      { id:"exp_laudo_qual", texto:"Laudo de Qualidade do lote emitido por laboratorio credenciado (MAPA ou INMETRO)", ref:"Lei 9.972/2000 — Classificacao de Graos e IN MAPA 60/2011" },
-      { id:"exp_residuos", texto:"Analise de residuos de agrotoxicos — laudo com limites dentro do MRL exigido pelo pais importador", ref:"Regulamento (CE) 396/2005 — MRL europeu; US EPA para EUA" },
+      { id:"exp_ppp", texto:"Permissao de Transito de Vegetais (PTV) ou Permissao Previa de Importacao do pais destino recebida", ref:"IN MAPA 36/2006 â transito internacional" },
+      { id:"exp_laudo_qual", texto:"Laudo de Qualidade do lote emitido por laboratorio credenciado (MAPA ou INMETRO)", ref:"Lei 9.972/2000 â Classificacao de Grãos e IN MAPA 60/2011" },
+      { id:"exp_residuos", texto:"Análise de residuos de agrotoxicos â laudo com limites dentro do MRL exigido pelo pais importador", ref:"Regulamento (CE) 396/2005 â MRL europeu; US EPA para EUA" },
       { id:"exp_aflatoxina", texto:"Laudo de micotoxinas (aflatoxinas, fumonisinas, DON) dentro dos limites do pais importador", ref:"Regulamento (CE) 1881/2006 para UE; FDA para EUA" }
     ]},
     { cat:"Certificacoes e Rastreabilidade", itens:[
-      { id:"exp_cert_org", texto:"Certificado organico valido (se produto certificado) — emitido por certificadora credenciada MAPA/IFOAM", ref:"IN MAPA 46/2011 e Lei 10.831/2003" },
-      { id:"exp_rastreab", texto:"Rastreabilidade completa do lote documentada (fazenda → armazem → embarque)", ref:"GlobalG.A.P. e Reg. UE 178/2002 (principio farm-to-fork)" },
-      { id:"exp_cpr", texto:"CPR (Cedula de Produto Rural) quitada ou com anuencia do credor financiador (se financiado)", ref:"Lei 8.929/1994 — CPR; resolucao BACEN sobre gravame" },
+      { id:"exp_cert_org", texto:"Certificado organico valido (se produto certificado) â emitido por certificadora credenciada MAPA/IFOAM", ref:"IN MAPA 46/2011 e Lei 10.831/2003" },
+      { id:"exp_rastreab", texto:"Rastreabilidade completa do lote documentada (fazenda â armazem â embarque)", ref:"GlobalG.A.P. e Reg. UE 178/2002 (principio farm-to-fork)" },
+      { id:"exp_cpr", texto:"CPR (Cedula de Produto Rural) quitada ou com anuencia do credor financiador (se financiado)", ref:"Lei 8.929/1994 â CPR; resolucao BACEN sobre gravame" },
       { id:"exp_car", texto:"CAR (Cadastro Ambiental Rural) da fazenda de origem ativo e regularizado no SICAR", ref:"Lei 12.651/2012 Art. 29 (Codigo Florestal)" }
     ]},
     { cat:"Logistica e Armazenagem", itens:[
-      { id:"exp_warrant", texto:"Warrant ou CDA/WA emitido pelo armazem credenciado (MAPA) se produto em deposito", ref:"Lei 11.076/2004 — CDAs e WAs" },
+      { id:"exp_warrant", texto:"Warrant ou CDA/WA emitido pelo armazem credenciado (MAPA) se produto em deposito", ref:"Lei 11.076/2004 â CDAs e WAs" },
       { id:"exp_conhec_emb", texto:"Conhecimento de Embarque (Bill of Lading ou AWB) emitido apos averbacao da DUE", ref:"Convencao de Hamburgo e INCOTERMS 2020" },
       { id:"exp_bl", texto:"BL/AWB com descricao de mercadoria conforme NCM declarado", ref:"NCM 1201.10.00 (soja), 1005.90.10 (milho), 0901.11.00 (cafe)" },
-      { id:"exp_seguro", texto:"Apolice de seguro de transporte internacional emitida (CIF/CIP) ou confirmada pelo importador (FOB/FCA)", ref:"INCOTERMS 2020 — obrigacoes por modalidade" }
+      { id:"exp_seguro", texto:"Apolice de seguro de transporte internacional emitida (CIF/CIP) ou confirmada pelo importador (FOB/FCA)", ref:"INCOTERMS 2020 â obrigacoes por modalidade" }
     ]},
     { cat:"Obrigacoes Tributarias e Aduaneiras", itens:[
-      { id:"exp_imunidade_icms", texto:"Imunidade de ICMS aplicada corretamente na NF-e de exportacao (CF 88 Art. 155 § 2 X a)", ref:"Constituicao Federal Art. 155 § 2 inc. X alinea a" },
+      { id:"exp_imunidade_icms", texto:"Imunidade de ICMS aplicada corretamente na NF-e de exportacao (CF 88 Art. 155 Â§ 2 X a)", ref:"Constituicao Federal Art. 155 Â§ 2 inc. X alinea a" },
       { id:"exp_drawback", texto:"Drawback ou Ex-tarifario registrado se houve importacao de insumos vinculados (quando aplicavel)", ref:"Portaria SECEX 23/2011 e Dec. 6.759/2009 Regulamento Aduaneiro" },
-      { id:"exp_pis_cofins", texto:"PIS/COFINS sobre exportacao — aliquota zero confirmada ou ressarcimento de creditos solicitado", ref:"Lei 10.833/2003 Art. 5 e Lei 10.637/2002 Art. 5" },
+      { id:"exp_pis_cofins", texto:"PIS/COFINS sobre exportacao â aliquota zero confirmada ou ressarcimento de creditos solicitado", ref:"Lei 10.833/2003 Art. 5 e Lei 10.637/2002 Art. 5" },
       { id:"exp_rof", texto:"ROF (Registro de Operacoes Financeiras) no BACEN se houver adiantamento sobre cambio (ACC/ACE)", ref:"Circular BACEN 3691/2013 e Lei 4.131/1962" }
     ]}
   ];
@@ -322,7 +322,7 @@ window.module_vendas_graos = async function() {
       var totalItens = window._vgExportacaoItens.reduce(function(a,c){ return a + c.itens.length; }, 0);
       var doneItens = Object.values(cl).filter(Boolean).length;
       exportSection = "<div style=\"background:#fff8e1;border:1px solid #ffd54f;border-radius:10px;padding:14px;margin-top:12px\">";
-      exportSection += "<div style=\"font-weight:700;color:#e65100;margin-bottom:10px\">&#9992; Checklist de Exportacao — " + doneItens + "/" + totalItens + " itens concluidos</div>";
+      exportSection += "<div style=\"font-weight:700;color:#e65100;margin-bottom:10px\">&#9992; Checklist de Exportacao â " + doneItens + "/" + totalItens + " itens concluidos</div>";
       window._vgExportacaoItens.forEach(function(cat) {
         exportSection += "<div style=\"font-size:11px;font-weight:700;color:#888;margin:8px 0 4px\">" + cat.cat + "</div>";
         cat.itens.forEach(function(item) {
@@ -347,7 +347,7 @@ window.module_vendas_graos = async function() {
       + row("Tipo", v.tipo_contrato||"")
       + row("Comprador", v.comprador||"")
       + row("Qtd Sacas", sc(v.quantidade_sc) + " sc")
-      + row("Preco/Saca", br(v.preco_saca))
+      + row("Preço/Saca", br(v.preco_saca))
       + row("Total", br(total))
       + row("Data Contrato", dt(v.data_contrato))
       + row("Data Entrega", dt(v.data_entrega))
@@ -398,11 +398,11 @@ window.module_vendas_graos = async function() {
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Safra</label><select id=\"evSaf\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\"><option value=\"\"></option>" + safOpts2 + "</select></div>"
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Tipo Contrato</label><select id=\"evTipo\" onchange=\"window._vgCheckExportacaoEdit();\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\">" + tipoOptions + "</select></div>"
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Qtd Sacas</label><input id=\"evQtd\" type=\"number\" value=\"" + (v.quantidade_sc||"") + "\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>"
-      + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Preco/Saca (R$)</label><input id=\"evPreco\" type=\"number\" value=\"" + (v.preco_saca||"") + "\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>"
+      + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Preço/Saca (R$)</label><input id=\"evPreco\" type=\"number\" value=\"" + (v.preco_saca||"") + "\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>"
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Comprador</label><input id=\"evComp\" type=\"text\" value=\"" + (v.comprador||"") + "\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>"
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Status</label><select id=\"evSts\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\">" + statusOptions + "</select></div>"
       + "<div><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Numero Contrato</label><input id=\"evNum\" type=\"text\" value=\"" + (v.numero_contrato||"") + "\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;box-sizing:border-box\"></div>"
-      + "<div style=\"grid-column:1/-1\"><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Analise de Qualidade Vinculada</label><select id=\"evQual\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\">" + qOpts + "</select></div>"
+      + "<div style=\"grid-column:1/-1\"><label style=\"font-size:12px;color:#555;display:block;margin-bottom:4px\">Análise de Qualidade Vinculada</label><select id=\"evQual\" style=\"width:100%;padding:8px;border:1px solid #ddd;border-radius:6px\">" + qOpts + "</select></div>"
       + "</div>"
       + exportHTML
       + "<div style=\"margin-top:16px;display:flex;gap:8px;justify-content:flex-end\">"
@@ -538,7 +538,7 @@ window.module_vendas_graos = async function() {
     if (!qtd || qtd <= 0) { alert("Informe a quantidade de sacas."); return; }
     if (!data) { alert("Informe a data de entrega."); return; }
     try {
-      var res = await sb.from("entregas_graos").insert({ venda_id: vendaId, quantidade_sc: qtd, data_entrega: data, nota_fiscal: nf, observacoes: obs });
+      var res = await sb.from("entregas_grãos").insert({ venda_id: vendaId, quantidade_sc: qtd, data_entrega: data, nota_fiscal: nf, observacoes: obs });
       if (res.error) throw res.error;
       // Atualizar status do contrato
       var v = (window._vgAllVendas||[]).find(function(x){ return x.id===vendaId; });

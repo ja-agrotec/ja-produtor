@@ -6,7 +6,7 @@ const AdminCertificação = (() => {
   const CHECKLISTS = {
     organico: {
       nome: 'Orgânico (MAPA)',
-      icon: 'ð±',
+      icon: '🌱',
       itens: [
         { id: 'org_01', categoria: 'Solo', descricao: 'Análise de solo realizada nos últimos 12 meses' },
         { id: 'org_02', categoria: 'Solo', descricao: 'Plano de manejo orgânico documentado' },
@@ -26,7 +26,7 @@ const AdminCertificação = (() => {
     },
     globalgap: {
       nome: 'GlobalG.A.P.',
-      icon: 'ð',
+      icon: '🌍',
       itens: [
         { id: 'ggap_01', categoria: 'Rastreabilidade', descricao: 'Sistema de rastreabilidade implementado (farm-to-fork)' },
         { id: 'ggap_02', categoria: 'Rastreabilidade', descricao: 'Registros de produção arquivados por no mínimo 2 anos' },
@@ -48,7 +48,7 @@ const AdminCertificação = (() => {
     },
     rainforest: {
       nome: 'Rainforest Alliance',
-      icon: 'ð¸',
+      icon: '🐸',
       itens: [
         { id: 'ra_01', categoria: 'Biodiversidade', descricao: 'Mapeamento de áreas de conservação na propriedade' },
         { id: 'ra_02', categoria: 'Biodiversidade', descricao: 'Programa de restauração de habitats naturais' },
@@ -248,7 +248,7 @@ const AdminCertificação = (() => {
     container.innerHTML = `
     <div class="cert-container">
       <div class="cert-header">
-        <h2>ð Certificação de Fazenda</h2>
+        <h2>🏅 Certificação de Fazenda</h2>
         <p>Gerencie certificações, checklists de auditoria e conformidade de insumos</p>
       </div>
       <div id="cert-main">${fazendasHtml}</div>
@@ -257,10 +257,10 @@ const AdminCertificação = (() => {
 
   async function renderFazendaSelector() {
     const fazendas = await loadFazendas();
-    if (!fazendas.length) return '<div class="cert-empty"><span>ð¡</span><p>Nenhuma fazenda cadastrada.<br>Cadastre uma fazenda primeiro.</p></div>';
+    if (!fazendas.length) return '<div class="cert-empty"><span>🏡</span><p>Nenhuma fazenda cadastrada.<br>Cadastre uma fazenda primeiro.</p></div>';
     return `<div class="cert-fazenda-grid">${fazendas.map(f => `
       <div class="cert-fazenda-card ${f.certificada ? 'is-cert' : ''}" onclick="AdminCertificação.openFazenda('${f.id}')">
-        <div class="cert-fazenda-icon">${f.certificada ? (CHECKLISTS[f.tipo_certificacao]?.icon || 'â') : 'ð¡'}</div>
+        <div class="cert-fazenda-icon">${f.certificada ? (CHECKLISTS[f.tipo_certificacao]?.icon || 'â') : '🏡'}</div>
         <div class="cert-fazenda-info">
           <div class="cert-fazenda-nome">${f.nome}</div>
           <div class="cert-fazenda-status">${f.certificada
@@ -348,7 +348,7 @@ const AdminCertificação = (() => {
     if (!talhoes.length) return '';
     return `
     <div class="cert-section">
-      <div class="cert-section-header"><h4>ðºï¸ Talhões â Conformidade</h4></div>
+      <div class="cert-section-header"><h4>🗺️ Talhões â Conformidade</h4></div>
       <div class="cert-talhoes-list">
         ${talhoes.map(t => {
           const segue = t.segue_certificação !== false;
@@ -369,7 +369,7 @@ const AdminCertificação = (() => {
     if (!insumos.length) return '';
     return `
     <div class="cert-section">
-      <div class="cert-section-header"><h4>ð¿ Insumos â Compatibilidade</h4></div>
+      <div class="cert-section-header"><h4>🌿 Insumos â Compatibilidade</h4></div>
       <p class="cert-hint">Marque os insumos permitidos para uso em talhões certificados.</p>
       <div class="cert-insumos-list">
         ${insumos.map(i => {

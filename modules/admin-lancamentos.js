@@ -228,7 +228,27 @@ window.module_lancamentos = async function() {
       "</div></div>"+
       // DIAS - shown for por_dia billing (mao de obra, servico diario)
       "<div class=\"form-field\" id=\"lanc_dias_wrap\" style=\"display:none;grid-column:span 2;background:#faf5ff;border:1px solid #a855f7;border-radius:8px;padding:12px;margin-bottom:4px\">"+
-      "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">"+
+            "<div style=\"grid-column:span 2;margin-bottom:8px\">"+
+      "<label style=\"color:#6b21a8;font-weight:600\">Tipo de Serviço *</label>"+
+      "<select id=\"lanc_tipo_servico\" style=\"width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-top:4px\">"+
+      "<option value=\"\">Selecione o tipo de serviço...</option>"+
+      "<option>Aplicação de defensivos</option>"+
+      "<option>Adubação</option>"+
+      "<option>Capina</option>"+
+      "<option>Capina manual</option>"+
+      "<option>Colheita manual</option>"+
+      "<option>Desbrota</option>"+
+      "<option>Gradagem manual</option>"+
+      "<option>Irrigação</option>"+
+      "<option>Poda</option>"+
+      "<option>Plantio manual</option>"+
+      "<option>Roçar</option>"+
+      "<option>Semeadura manual</option>"+
+      "<option>Transporte interno</option>"+
+      "<option>Vigilância</option>"+
+      "<option>Outro</option>"+
+      "</select></div>"+
+"<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">"+
       "<div><label style=\"color:#6b21a8;font-weight:600\">📅 Dias Trabalhados *</label>"+
       "<input id=\"lanc_dias\" type=\"number\" step=\"1\" min=\"0\" placeholder=\"Ex: 15\" value=\"\" oninput=\"window._lanc_calcCustoDia()\"/></div>"+
       "<div><label style=\"color:#6b21a8;font-weight:600\">R$/Dia (custo por dia)</label>"+
@@ -260,6 +280,8 @@ window.module_lancamentos = async function() {
         const maqId  = document.getElementById("lanc_maq").value || null;
         const nf     = document.getElementById("lanc_nf").value.trim() || null;
         const desc   = document.getElementById("lanc_desc").value.trim();
+        const tipoServ = (document.getElementById("lanc_tipo_servico")||{}).value||"";
+        const finalDesc = tipoServ ? (desc ? tipoServ+" - "+desc : tipoServ) : desc;
         const obs    = document.getElementById("lanc_obs").value.trim() || null;
         const custo  = parseFloat(document.getElementById("lanc_custo").value);
         // If machine selected: horas = quantidade, unidade = h
@@ -295,14 +317,15 @@ window.module_lancamentos = async function() {
         if(!data) { toast("Informe a data","bad"); return; }
         if(!custo || custo <= 0) { toast("Informe o custo total","bad"); return; }
         if(!fazId) { toast("Selecione a fazenda","bad"); return; }
-        if(!desc)  { toast("Informe a descri\u00E7\u00E3o","bad"); return; }
+        if(!finalDesc)  { toast("Informe a descri\u00E7\u00E3o","bad"); return; }
+        if(usingDia && !tipoServ) { toast("Selecione o tipo de serviço","bad"); return; }
         if(maqId && !usingHA && !usingDia && (!qtd || qtd <= 0)) { toast("Informe as horas trabalhadas","bad"); return; }
         if(usingHA && (!areaHa || areaHa <= 0)) { toast("Informe a área em hectares","bad"); return; }
         if(usingDia && (!dias || dias <= 0)) { toast("Informe os dias trabalhados","bad"); return; }
         const payload = { tipo: tipo, data_lancamento: data, fazenda_id: fazId, safra_id: safId,
           talhao_id: talId, operador_id: opId, insumo_id: insId, maquina_id: maqId,
           quantidade: qtd, unidade: unid, custo_total: custo, custo_unitario: custoUnit||null,
-          nota_fiscal: nf, descricao: desc,
+          nota_fiscal: nf, descricao: finalDesc,
           categoria_id: (document.getElementById("lanc_cat")||{}).value||null, observacoes: obs };
         const { error } = isNovo
           ? await sb.from("lancamentos").insert(payload)

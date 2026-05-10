@@ -1,27 +1,27 @@
- // admin-certificação.js - MÃ³dulo de CertificaÃ§Ã£o de Fazenda
+ // admin-certificação.js - Módulo de Certificação de Fazenda
 // JA Agro Intelligence v1.0
 
 const AdminCertificação = (() => {
 
   const CHECKLISTS = {
     organico: {
-      nome: 'OrgÃ¢nico (MAPA)',
+      nome: 'Orgânico (MAPA)',
       icon: 'ð±',
       itens: [
-        { id: 'org_01', categoria: 'Solo', descricao: 'AnÃ¡lise de solo realizada nos Ãºltimos 12 meses' },
-        { id: 'org_02', categoria: 'Solo', descricao: 'Plano de manejo orgÃ¢nico documentado' },
-        { id: 'org_03', categoria: 'Insumos', descricao: 'Todos os insumos utilizados sÃ£o permitidos pela IN 46/2011' },
-        { id: 'org_04', categoria: 'Insumos', descricao: 'Registros de compra de insumos disponÃ­veis' },
+        { id: 'org_01', categoria: 'Solo', descricao: 'Análise de solo realizada nos últimos 12 meses' },
+        { id: 'org_02', categoria: 'Solo', descricao: 'Plano de manejo orgânico documentado' },
+        { id: 'org_03', categoria: 'Insumos', descricao: 'Todos os insumos utilizados são permitidos pela IN 46/2011' },
+        { id: 'org_04', categoria: 'Insumos', descricao: 'Registros de compra de insumos disponíveis' },
         { id: 'org_05', categoria: 'Rastreabilidade', descricao: 'Registros de plantio e colheita documentados' },
-        { id: 'org_06', categoria: 'Rastreabilidade', descricao: 'SeparaÃ§Ã£o fÃ­sica de produtos orgÃ¢nicos e convencionais' },
-        { id: 'org_07', categoria: 'Ãgua', descricao: 'AnÃ¡lise de qualidade da Ã¡gua de irrigaÃ§Ã£o' },
-        { id: 'org_08', categoria: 'Ãgua', descricao: 'ProteÃ§Ã£o de mananciais e nascentes' },
-        { id: 'org_09', categoria: 'Social', descricao: 'Cumprimento da legislaÃ§Ã£o trabalhista' },
-        { id: 'org_10', categoria: 'Social', descricao: 'AusÃªncia de trabalho infantil ou forÃ§ado' },
+        { id: 'org_06', categoria: 'Rastreabilidade', descricao: 'Separação física de produtos orgânicos e convencionais' },
+        { id: 'org_07', categoria: 'Água', descricao: 'Análise de qualidade da água de irrigação' },
+        { id: 'org_08', categoria: 'Água', descricao: 'Proteção de mananciais e nascentes' },
+        { id: 'org_09', categoria: 'Social', descricao: 'Cumprimento da legislação trabalhista' },
+        { id: 'org_10', categoria: 'Social', descricao: 'Ausência de trabalho infantil ou forçado' },
         { id: 'org_11', categoria: 'Ambiental', descricao: 'Reserva Legal demarcada e preservada' },
-        { id: 'org_12', categoria: 'Ambiental', descricao: 'Ãrea de PreservaÃ§Ã£o Permanente respeitada' },
-        { id: 'org_13', categoria: 'ConversÃ£o', descricao: 'PerÃ­odo de conversÃ£o de 12-36 meses cumprido' },
-        { id: 'org_14', categoria: 'ConversÃ£o', descricao: 'Certificadora OCS/OPACs cadastrada no MAPA' },
+        { id: 'org_12', categoria: 'Ambiental', descricao: 'Área de Preservação Permanente respeitada' },
+        { id: 'org_13', categoria: 'Conversão', descricao: 'Período de conversão de 12-36 meses cumprido' },
+        { id: 'org_14', categoria: 'Conversão', descricao: 'Certificadora OCS/OPACs cadastrada no MAPA' },
       ]
     },
     globalgap: {
@@ -29,42 +29,42 @@ const AdminCertificação = (() => {
       icon: 'ð',
       itens: [
         { id: 'ggap_01', categoria: 'Rastreabilidade', descricao: 'Sistema de rastreabilidade implementado (farm-to-fork)' },
-        { id: 'ggap_02', categoria: 'Rastreabilidade', descricao: 'Registros de produÃ§Ã£o arquivados por no mÃ­nimo 2 anos' },
-        { id: 'ggap_03', categoria: 'AgroquÃ­micos', descricao: 'Somente produtos registrados e autorizados utilizados' },
-        { id: 'ggap_04', categoria: 'AgroquÃ­micos', descricao: 'Operadores de aplicaÃ§Ã£o treinados e certificados' },
-        { id: 'ggap_05', categoria: 'AgroquÃ­micos', descricao: 'Equipamentos de proteÃ§Ã£o individual disponÃ­veis e em uso' },
-        { id: 'ggap_06', categoria: 'AgroquÃ­micos', descricao: 'CarÃªncias respeitadas conforme bula' },
-        { id: 'ggap_07', categoria: 'Ãgua', descricao: 'AnÃ¡lise microbiolÃ³gica da Ã¡gua de irrigaÃ§Ã£o' },
-        { id: 'ggap_08', categoria: 'Ãgua', descricao: 'Plano de gestÃ£o de Ã¡gua documentado' },
-        { id: 'ggap_09', categoria: 'Solo', descricao: 'Plano de fertilizaÃ§Ã£o baseado em anÃ¡lise de solo' },
-        { id: 'ggap_10', categoria: 'Solo', descricao: 'ErosÃ£o controlada e documentada' },
-        { id: 'ggap_11', categoria: 'Colheita', descricao: 'Higiene na colheita e pÃ³s-colheita documentada' },
+        { id: 'ggap_02', categoria: 'Rastreabilidade', descricao: 'Registros de produção arquivados por no mínimo 2 anos' },
+        { id: 'ggap_03', categoria: 'Agroquímicos', descricao: 'Somente produtos registrados e autorizados utilizados' },
+        { id: 'ggap_04', categoria: 'Agroquímicos', descricao: 'Operadores de aplicação treinados e certificados' },
+        { id: 'ggap_05', categoria: 'Agroquímicos', descricao: 'Equipamentos de proteção individual disponíveis e em uso' },
+        { id: 'ggap_06', categoria: 'Agroquímicos', descricao: 'Carências respeitadas conforme bula' },
+        { id: 'ggap_07', categoria: 'Água', descricao: 'Análise microbiológica da água de irrigação' },
+        { id: 'ggap_08', categoria: 'Água', descricao: 'Plano de gestão de água documentado' },
+        { id: 'ggap_09', categoria: 'Solo', descricao: 'Plano de fertilização baseado em análise de solo' },
+        { id: 'ggap_10', categoria: 'Solo', descricao: 'Erosão controlada e documentada' },
+        { id: 'ggap_11', categoria: 'Colheita', descricao: 'Higiene na colheita e pós-colheita documentada' },
         { id: 'ggap_12', categoria: 'Colheita', descricao: 'Equipamentos de colheita limpos e calibrados' },
-        { id: 'ggap_13', categoria: 'Ambiental', descricao: 'AvaliaÃ§Ã£o de impacto ambiental realizada' },
-        { id: 'ggap_14', categoria: 'Ambiental', descricao: 'ResÃ­duos de embalagens descartados corretamente' },
-        { id: 'ggap_15', categoria: 'Social', descricao: 'PolÃ­tica de saÃºde e seguranÃ§a do trabalhador' },
-        { id: 'ggap_16', categoria: 'Social', descricao: 'Treinamentos de seguranÃ§a registrados' },
+        { id: 'ggap_13', categoria: 'Ambiental', descricao: 'Avaliação de impacto ambiental realizada' },
+        { id: 'ggap_14', categoria: 'Ambiental', descricao: 'Resíduos de embalagens descartados corretamente' },
+        { id: 'ggap_15', categoria: 'Social', descricao: 'Política de saúde e segurança do trabalhador' },
+        { id: 'ggap_16', categoria: 'Social', descricao: 'Treinamentos de segurança registrados' },
       ]
     },
     rainforest: {
       nome: 'Rainforest Alliance',
       icon: 'ð¸',
       itens: [
-        { id: 'ra_01', categoria: 'Biodiversidade', descricao: 'Mapeamento de Ã¡reas de conservaÃ§Ã£o na propriedade' },
-        { id: 'ra_02', categoria: 'Biodiversidade', descricao: 'Programa de restauraÃ§Ã£o de habitats naturais' },
-        { id: 'ra_03', categoria: 'Clima', descricao: 'InventÃ¡rio de emissÃµes de GEE realizado' },
-        { id: 'ra_04', categoria: 'Clima', descricao: 'Plano de mitigaÃ§Ã£o de mudanÃ§as climÃ¡ticas' },
-        { id: 'ra_05', categoria: 'Solo', descricao: 'PrÃ¡ticas de conservaÃ§Ã£o do solo implementadas' },
-        { id: 'ra_06', categoria: 'Ãgua', descricao: 'Plano de gestÃ£o hÃ­drica com metas de reduÃ§Ã£o' },
-        { id: 'ra_07', categoria: 'AgroquÃ­micos', descricao: 'Lista de pesticidas HHP identificada e gerenciada' },
-        { id: 'ra_08', categoria: 'AgroquÃ­micos', descricao: 'Programa de MIP (Manejo Integrado de Pragas)' },
-        { id: 'ra_09', categoria: 'Social', descricao: 'SalÃ¡rio justo e benefÃ­cios documentados' },
-        { id: 'ra_10', categoria: 'Social', descricao: 'Mecanismo de reclamaÃ§Ã£o disponÃ­vel para trabalhadores' },
-        { id: 'ra_11', categoria: 'Social', descricao: 'PolÃ­tica de nÃ£o discriminaÃ§Ã£o implementada' },
-        { id: 'ra_12', categoria: 'Social', descricao: 'Trabalho infantil e forÃ§ado prevenido ativamente' },
+        { id: 'ra_01', categoria: 'Biodiversidade', descricao: 'Mapeamento de áreas de conservação na propriedade' },
+        { id: 'ra_02', categoria: 'Biodiversidade', descricao: 'Programa de restauração de habitats naturais' },
+        { id: 'ra_03', categoria: 'Clima', descricao: 'Inventário de emissões de GEE realizado' },
+        { id: 'ra_04', categoria: 'Clima', descricao: 'Plano de mitigação de mudanças climáticas' },
+        { id: 'ra_05', categoria: 'Solo', descricao: 'Práticas de conservação do solo implementadas' },
+        { id: 'ra_06', categoria: 'Água', descricao: 'Plano de gestão hídrica com metas de redução' },
+        { id: 'ra_07', categoria: 'Agroquímicos', descricao: 'Lista de pesticidas HHP identificada e gerenciada' },
+        { id: 'ra_08', categoria: 'Agroquímicos', descricao: 'Programa de MIP (Manejo Integrado de Pragas)' },
+        { id: 'ra_09', categoria: 'Social', descricao: 'Salário justo e benefícios documentados' },
+        { id: 'ra_10', categoria: 'Social', descricao: 'Mecanismo de reclamação disponível para trabalhadores' },
+        { id: 'ra_11', categoria: 'Social', descricao: 'Política de não discriminação implementada' },
+        { id: 'ra_12', categoria: 'Social', descricao: 'Trabalho infantil e forçado prevenido ativamente' },
         { id: 'ra_13', categoria: 'Comunidade', descricao: 'Engajamento com comunidades locais documentado' },
-        { id: 'ra_14', categoria: 'GestÃ£o', descricao: 'Sistema de gestÃ£o da fazenda documentado' },
-        { id: 'ra_15', categoria: 'GestÃ£o', descricao: 'Auditoria interna anual realizada' },
+        { id: 'ra_14', categoria: 'Gestão', descricao: 'Sistema de gestão da fazenda documentado' },
+        { id: 'ra_15', categoria: 'Gestão', descricao: 'Auditoria interna anual realizada' },
       ]
     }
   };
@@ -105,7 +105,7 @@ const AdminCertificação = (() => {
 
   async function updateFazendaCert(fazendaId, certificada, tipoCert) {
     const sb = getSupabase();
-    if (!sb) throw new Error('Sem conexÃ£o');
+    if (!sb) throw new Error('Sem conexão');
     const { error } = await sb.from('fazendas').update({ certificada, tipo_certificacao: tipoCert || null }).eq('id', fazendaId);
     if (error) throw error;
   }
@@ -119,7 +119,7 @@ const AdminCertificação = (() => {
 
   async function updateTalhaoFlag(talhaoId, segue) {
     const sb = getSupabase();
-    if (!sb) throw new Error('Sem conexÃ£o');
+    if (!sb) throw new Error('Sem conexão');
     const { error } = await sb.from('talhoes').update({ segue_certificação: segue }).eq('id', talhaoId);
     if (error) throw error;
   }
@@ -135,7 +135,7 @@ const AdminCertificação = (() => {
 
   async function saveChecklistItem(fazendaId, tipo, itemId, status, obs) {
     const sb = getSupabase();
-    if (!sb) throw new Error('Sem conexÃ£o');
+    if (!sb) throw new Error('Sem conexão');
     const payload = {
       fazenda_id: fazendaId, tipo_certificacao: tipo, item_id: itemId,
       status, observacao: obs || null,
@@ -154,7 +154,7 @@ const AdminCertificação = (() => {
 
   async function updateInsumoFlag(insumoId, permitido) {
     const sb = getSupabase();
-    if (!sb) throw new Error('Sem conexÃ£o');
+    if (!sb) throw new Error('Sem conexão');
     const { error } = await sb.from('insumos').update({ certificação_permitida: permitido }).eq('id', insumoId);
     if (error) throw error;
   }
@@ -163,7 +163,7 @@ const AdminCertificação = (() => {
     const map = {
       pendente: '<span class="cert-badge cert-pendente">Pendente</span>',
       conforme: '<span class="cert-badge cert-conforme">Conforme</span>',
-      nao_conforme: '<span class="cert-badge cert-nao-conforme">NÃ£o Conforme</span>',
+      nao_conforme: '<span class="cert-badge cert-nao-conforme">Não Conforme</span>',
       nao_aplicavel: '<span class="cert-badge cert-na">N/A</span>'
     };
     return map[st] || map.pendente;
@@ -248,8 +248,8 @@ const AdminCertificação = (() => {
     container.innerHTML = `
     <div class="cert-container">
       <div class="cert-header">
-        <h2>ð CertificaÃ§Ã£o de Fazenda</h2>
-        <p>Gerencie certificaÃ§Ãµes, checklists de auditoria e conformidade de insumos</p>
+        <h2>ð Certificação de Fazenda</h2>
+        <p>Gerencie certificações, checklists de auditoria e conformidade de insumos</p>
       </div>
       <div id="cert-main">${fazendasHtml}</div>
     </div>`;
@@ -265,7 +265,7 @@ const AdminCertificação = (() => {
           <div class="cert-fazenda-nome">${f.nome}</div>
           <div class="cert-fazenda-status">${f.certificada
             ? `<span class="cert-tag cert-active">${CHECKLISTS[f.tipo_certificacao]?.nome || f.tipo_certificacao}</span>`
-            : '<span class="cert-tag cert-none">Sem certificaÃ§Ã£o</span>'}</div>
+            : '<span class="cert-tag cert-none">Sem certificação</span>'}</div>
         </div>
         <div class="cert-fazenda-arrow">âº</div>
       </div>
@@ -279,7 +279,7 @@ const AdminCertificação = (() => {
       <h3 class="cert-farm-title">${fazenda.nome}</h3>
     </div>
     <div class="cert-config-section">
-      <h4>Status de CertificaÃ§Ã£o</h4>
+      <h4>Status de Certificação</h4>
       <div class="cert-config-row">
         <label class="cert-toggle-label">
           <span>Fazenda Certificada</span>
@@ -287,7 +287,7 @@ const AdminCertificação = (() => {
         </label>
       </div>
       <div class="cert-type-select ${fazenda.certificada ? '' : 'hidden'}" id="cert-type-select">
-        <label>Tipo de CertificaÃ§Ã£o</label>
+        <label>Tipo de Certificação</label>
         <div class="cert-type-options">
           ${Object.entries(CHECKLISTS).map(([k, v]) => `
             <div class="cert-type-option ${fazenda.tipo_certificacao === k ? 'selected' : ''}" onclick="AdminCertificação.selectTipo('${k}')">
@@ -330,12 +330,12 @@ const AdminCertificação = (() => {
                 <select class="cert-status-select" onchange="AdminCertificação.updateItem('${it.id}', this.value, document.getElementById('obs-${it.id}')?.value||'')">
                   <option value="pendente" ${st==='pendente'?'selected':''}>Pendente</option>
                   <option value="conforme" ${st==='conforme'?'selected':''}>Conforme</option>
-                  <option value="nao_conforme" ${st==='nao_conforme'?'selected':''}>NÃ£o Conforme</option>
+                  <option value="nao_conforme" ${st==='nao_conforme'?'selected':''}>Não Conforme</option>
                   <option value="nao_aplicavel" ${st==='nao_aplicavel'?'selected':''}>N/A</option>
                 </select>
                 ${statusBadge(st)}
               </div>
-              <input class="cert-obs-input" id="obs-${it.id}" placeholder="ObservaÃ§Ã£o..." value="${saved?.observacao||''}" onblur="AdminCertificação.updateItem('${it.id}', document.querySelector('#item-${it.id} select').value, this.value)">
+              <input class="cert-obs-input" id="obs-${it.id}" placeholder="Observação..." value="${saved?.observacao||''}" onblur="AdminCertificação.updateItem('${it.id}', document.querySelector('#item-${it.id} select').value, this.value)">
             </div>`;
           }).join('')}
         </div>
@@ -348,14 +348,14 @@ const AdminCertificação = (() => {
     if (!talhoes.length) return '';
     return `
     <div class="cert-section">
-      <div class="cert-section-header"><h4>ðºï¸ TalhÃµes â Conformidade</h4></div>
+      <div class="cert-section-header"><h4>ðºï¸ Talhões â Conformidade</h4></div>
       <div class="cert-talhoes-list">
         ${talhoes.map(t => {
           const segue = t.segue_certificação !== false;
           return `<div class="cert-talhao-row">
             <span class="cert-talhao-nome">${t.nome}</span>
             <label class="cert-toggle-label">
-              <span style="font-size:.85rem;color:${segue?'#16a34a':'#dc2626'}">${segue?'Segue certificaÃ§Ã£o':'Isento'}</span>
+              <span style="font-size:.85rem;color:${segue?'#16a34a':'#dc2626'}">${segue?'Segue certificação':'Isento'}</span>
               <div class="cert-toggle ${segue?'active':''}" onclick="AdminCertificação.toggleTalhao('${t.id}',this)"></div>
             </label>
           </div>`;
@@ -370,7 +370,7 @@ const AdminCertificação = (() => {
     return `
     <div class="cert-section">
       <div class="cert-section-header"><h4>ð¿ Insumos â Compatibilidade</h4></div>
-      <p class="cert-hint">Marque os insumos permitidos para uso em talhÃµes certificados.</p>
+      <p class="cert-hint">Marque os insumos permitidos para uso em talhões certificados.</p>
       <div class="cert-insumos-list">
         ${insumos.map(i => {
           const perm = i.certificação_permitida !== false;
@@ -478,7 +478,7 @@ const AdminCertificação = (() => {
   async function toggleTalhao(talhaoId, el) {
     const active = el.classList.toggle('active');
     const label = el.previousElementSibling;
-    if (label) { label.style.color = active ? '#16a34a' : '#dc2626'; label.textContent = active ? 'Segue certificaÃ§Ã£o' : 'Isento'; }
+    if (label) { label.style.color = active ? '#16a34a' : '#dc2626'; label.textContent = active ? 'Segue certificação' : 'Isento'; }
     await updateTalhaoFlag(talhaoId, active);
   }
 

@@ -60,11 +60,36 @@ window.module_exportar = async function() {
       '<h3 style="margin:0 0 8px;font-size:16px">Relatório Executivo</h3>'+
       '<p style="color:var(--muted);font-size:13px;margin:0 0 16px">Resumo consolidado por fazenda: KPIs, safras e financeiro</p>'+
       '<button class="topbar-btn btn-primary" style="width:100%;margin-top:8px" onclick="window._exp_executivo()">⬇️ Exportar CSV</button>'+
-      '</div>'+
+      '</div>'
+      + '<div style="background:var(--dark2,#152615);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px">' 
+      + '<div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">' 
+      + '<span style="font-size:32px">📁</span>' 
+      + '<div><h3 style="margin:0;font-size:16px;font-weight:700">Documentos e Anexos</h3>' 
+      + '<p style="margin:4px 0 0;font-size:12px;color:#888">Inventário de documentos vinculados</p></div></div>' 
+      + '<button class="topbar-btn btn-primary" style="width:100%;margin-top:8px" onclick="loadModule(\'documentos\',document.querySelector(\'[data-module=\\\'documentos\\\']\')||{})">📁 Abrir Módulo Documentos</button>' 
+      + '<button class="topbar-btn btn-primary" style="width:100%;margin-top:8px;background:rgba(124,179,66,.15);color:#7cb342;border:1px solid rgba(124,179,66,.3)" onclick="window._expDocumentos&&window._expDocumentos()">⬇️ Exportar Inventário CSV</button>' 
+      + '</div>'+
       '</div>';
   }
 
   // ── HELPER CSV ───────────────────────────────────────────
+  
+
+  // ── Exportar inventário de documentos ──
+  window._expDocumentos = async function() {
+    try {
+      const { data } = await sb.from('documentos').select('*').order('created_at', { ascending: false });
+      const rows = data || [];
+      const headers = ['ID','Nome Arquivo','Tipo','Modulo Origem','Entidade','Descricao','URL','Tamanho','Destaque','Versao','Criado em'];
+      const csv = [headers, ...rows.map(r => [
+        r.id, r.nome_arquivo, r.tipo_documento, r.modulo_origem,
+        r.entidade_descricao, r.descricao, r.url_arquivo,
+        r.tamanho_bytes, r.destaque, r.versao, r.created_at
+      ].map(v => '"' + String(v||'').replace(/"/g,'""') + '"').join(','))].join('\n');
+      baixar('inventario_documentos.csv', csv);
+    } catch(e) { alert('Erro ao exportar: ' + e.message); }
+  };
+
   function baixarCSV(nome, cabecalho, linhas) {
     const BOM = '\uFEFF'; // BOM para Excel reconhecer UTF-8
     const csv = BOM + [cabecalho, ...linhas].join('\n');

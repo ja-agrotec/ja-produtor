@@ -69,6 +69,76 @@ window.module_dashboard = async function() {
 
   // 2. Lancamentos por mes (last 12 months)
   var byMonth = {};
+  var c = document.getElementById("mainContent");
+  if (!c) return;
+  c.innerHTML = "<div style=\"padding:20px;text-align:center;color:#888\">Carregando dashboard...</div>";
+
+  // Load Chart.js if not already loaded
+  if (!window.Chart) {
+    await new Promise(function(resolve, reject) {
+      var s = document.createElement("script");
+      s.src = "https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js";
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  // Load data in parallel
+  var [fazRes, lancRes, safRes, talRes, insRes, fechRes, vendRes] = await Promise.all([
+    sb.from("fazendas").select("id,nome,area_total_ha").eq("ativo",true).order("nome"),
+    sb.from("lancamentos").select("id,tipo,custo_total,data_lancamento,descricao,insumo_id,operador_id,maquina_id,categoria_id,safra_id,fazenda_id").eq("status","confirmado").order("data_lancamento",{ascending:true}).limit(500),
+    sb.from("safras").select("*").order("ano_agricola",{ascending:false}).limit(20),
+    sb.from("talhoes").select("id,nome,area_ha,fazenda_id").eq("ativo",true),
+    sb.from("insumos").select("id,nome,estoque_atual,estoque_minimo,preco_unitario").eq("ativo",true),
+    sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola),fazendas(nome)").order("criado_em",{ascending:false}).limit(10),
+    sb.from("vendas_grãos").select("*").order("criado_em",{ascending:false}).limit(50)
+  ]);
+
+  var fazendas = (fazRes.data || []);
+  var lancs = (lancRes.data || []);
+  var safras = (safRes.data || []);
+  var talhoes = (talRes.data || []);
+  var insumos = (insRes.data || []);
+  var fechamentos = (fechRes.data || []);
+  var vendas = (vendRes.data || []);
+
+  // Fazenda selecionada (compartilhada com a Home)
+  var _dashFazSel = sessionStorage.getItem('homeFazSel') || 'todas';
+  var _dashFazObj = fazendas.find(function(f){ return f.id === _dashFazSel; }) || null;
+  window._dashChangeFaz = function(val){
+    sessionStorage.setItem('homeFazSel', val);
+    window.module_dashboard();
+  };
+
+  // Filtrar dados pela fazenda selecionada
+  if(_dashFazSel && _dashFazSel !== 'todas'){
+    safras = safras.filter(function(s){ return s.fazenda_id === _dashFazSel; });
+    insumos = insumos.filter(function(i){ return i.fazenda_id === _dashFazSel; });
+    fechamentos = fechamentos.filter(function(f){ return f.fazenda_id === _dashFazSel; });
+    vendas = vendas.filter(function(v){ return v.fazenda_id === _dashFazSel; });
+    lancs = lancs.filter(function(l){ return l.fazenda_id === _dashFazSel; });
+  }
+
+  // Helper functions
+  function fmtBrl(n) { return "R$ " + parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtSc(n) { return parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:1,maximumFractionDigits:1}); }
+  function fmtPct(n) { return parseFloat(n||0).toFixed(1) + "%"; }
+
+  // AGGREGATIONS
+  // 1. Despesas por categoria (last 12 months)
+  var despesas = lancs.filter(function(l){ return l.tipo==="despesa"; });
+  var catTotals = { Insumos:0, MaoDeObra:0, Maquinas:0, Outros:0 };
+  despesas.forEach(function(l){
+    var v = parseFloat(l.custo_total||0);
+    if (l.insumo_id) catTotals.Insumos += v;
+    else if (l.operador_id) catTotals.MaoDeObra += v;
+    else if (l.maquina_id) catTotals.Maquinas += v;
+    else catTotals.Outros += v;
+  });
+
+  // 2. Lancamentos por mes (last 12 months)
+  var byMonth = {};
   lancs.forEach(function(l){
     if (!l.data_lancamento) return;
     var parts = l.data_lancamento.split("-");
@@ -107,11 +177,11 @@ window.module_dashboard = async function() {
   // RENDER HTML
   var html = "";
   // Seletor de fazenda no dashboard
-  var _dashFazSelectOpts = "<option value=\"todas\"" + (_dashFazSel==="todas"?" selected":"") + ">Ã°ÂÂÂïÂ¸Â Todas as Fazendas</option>"
+  var _dashFazSelectOpts = "<option value=\"todas\"" + (_dashFazSel==="todas"?" selected":"") + ">🏘️ Todas as Fazendas</option>"
     + fazendas.map(function(f){ return "<option value=\""+f.id+"\"" + (f.id===_dashFazSel?" selected":"") + ">"+f.nome+"</option>"; }).join("");
-  var _dashFazLabel = _dashFazObj ? " âÂÂ " + _dashFazObj.nome : "";
+  var _dashFazLabel = _dashFazObj ? " — " + _dashFazObj.nome : "";
   html += "<div style=\"display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:16px\">"
-       + "<h2 style=\"margin:0;font-size:20px\">Ã°ÂÂÂ Dashboard Analytics ÂÂ· GrÃÂ¡ficos e KPIs" + _dashFazLabel + "</h2>"
+       + "<h2 style=\"margin:0;font-size:20px\">📊 Dashboard Analytics · Gráficos e KPIs" + _dashFazLabel + "</h2>"
        + "<select onchange=\"window._dashChangeFaz(this.value)\" style=\"border:1px solid #ccc;border-radius:8px;padding:6px 12px;font-size:13px;cursor:pointer;\">"
        + _dashFazSelectOpts + "</select></div>";
   html += "<div style=\"max-width:1280px;margin:0 auto;padding:0\">"

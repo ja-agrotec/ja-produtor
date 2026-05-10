@@ -1,5 +1,5 @@
 // ============================================================
-// JA AGRO â Admin Module: Máquinas (Compartilhamento Multi-Fazenda)
+// JA AGRO – Admin Module: Máquinas (Compartilhamento Multi-Fazenda)
 // admin-máquinas.js
 // ============================================================
 window.module_maquinas = async function() {

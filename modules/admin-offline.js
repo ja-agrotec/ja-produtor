@@ -1,5 +1,5 @@
 // ============================================================
-// JA AGRO â Admin Module: Fila Offline
+// JA AGRO — Admin Module: Fila Offline
 // admin-offline.js
 // ============================================================
 window.module_offline = async function() {

@@ -1,5 +1,5 @@
 // ============================================================
-// JA AGRO â Admin Module: Insumos (HÃ­brido Multi-Fazenda)
+// JA AGRO â Admin Module: Insumos (Híbrido Multi-Fazenda)
 // admin-insumos.js
 // ============================================================
 window.module_insumos = async function() {
@@ -102,9 +102,9 @@ window.module_insumos = async function() {
             + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">TIPO</th>'
             + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">FAZENDA</th>'
             + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">ESTOQUE</th>'
-            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">EST. MÃN</th>'
-            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">PREÃO (R$)</th>'
-            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">AÃÃES</th>'
+            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">EST. MÍN</th>'
+            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">PREÇO (R$)</th>'
+            + '<th style="padding:12px 16px;text-align:left;font-size:12px;color:#555;font-weight:600;border-bottom:1px solid #eee">AÇÃES</th>'
             + '</tr></thead>'
             + '<tbody>' + renderRows(lista) + '</tbody>'
             + '</table></div></div>';
@@ -113,11 +113,11 @@ window.module_insumos = async function() {
           if (sel) sel.value = _fazFiltro;
     }
 
-    // ---- AÃ§Ãµes globais ----
+    // ---- Ações globais ----
     window._ins_setFaz = function(v) { _fazFiltro = v; renderUI(); };
     window._ins_setBusca = function(v) { _busca = v; renderUI(); };
 
-    // ---- MOVIMENTAÃÃO DE ESTOQUE ----
+    // ---- MOVIMENTAÇÃO DE ESTOQUE ----
     window._ins_movimentar = function(idx) {
           _movIdx = idx;
           var ins = _insumos[idx];
@@ -128,17 +128,17 @@ window.module_insumos = async function() {
           modal.id = 'ins_modal_mov';
           modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
           modal.innerHTML = '<div style="background:#fff;border-radius:12px;padding:28px;width:380px;max-width:95vw">'
-            + '<h3 style="margin:0 0 16px">Â± MovimentaÃ§Ã£o de Estoque</h3>'
+            + '<h3 style="margin:0 0 16px">Â± Movimentação de Estoque</h3>'
             + '<p style="margin:0 0 12px;color:#555"><strong>' + ins.nome + '</strong> â Estoque atual: ' + (ins.estoque_atual || 0) + ' ' + (ins.unidade || '') + '</p>'
             + '<label style="display:block;margin-bottom:8px;font-size:13px;font-weight:600">Tipo</label>'
             + '<select id="ins_mov_tipo" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px">'
             + '<option value="entrada">Entrada (+)</option>'
-            + '<option value="saida">SaÃ­da (â)</option>'
+            + '<option value="saida">Saída (â)</option>'
             + '<option value="ajuste">Ajuste (definir quantidade exata)</option>'
             + '</select>'
             + '<label style="display:block;margin-bottom:8px;font-size:13px;font-weight:600">Quantidade (' + (ins.unidade || 'un') + ')</label>'
             + '<input id="ins_mov_qtd" type="number" min="0" step="0.01" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box" placeholder="0">'
-            + '<label style="display:block;margin-bottom:8px;font-size:13px;font-weight:600">ObservaÃ§Ã£o (opcional)</label>'
+            + '<label style="display:block;margin-bottom:8px;font-size:13px;font-weight:600">Observação (opcional)</label>'
             + '<input id="ins_mov_obs" type="text" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:16px;box-sizing:border-box" placeholder="Ex: compra NF 1234">'
             + '<div style="display:flex;gap:10px;justify-content:flex-end">'
             + '<button onclick="window._ins_closeMov()" style="padding:8px 16px;border:1px solid #ccc;border-radius:6px;cursor:pointer;background:#fff">Cancelar</button>'
@@ -157,7 +157,7 @@ window.module_insumos = async function() {
           if (!ins) return;
           var tipo = document.getElementById('ins_mov_tipo').value;
           var qtd = parseFloat(document.getElementById('ins_mov_qtd').value);
-          if (!qtd || qtd <= 0) { alert('Informe uma quantidade vÃ¡lida.'); return; }
+          if (!qtd || qtd <= 0) { alert('Informe uma quantidade válida.'); return; }
           var novoEstoque = ins.estoque_atual || 0;
           if (tipo === 'entrada') novoEstoque += qtd;
           else if (tipo === 'saida') novoEstoque = Math.max(0, novoEstoque - qtd);
@@ -170,7 +170,7 @@ window.module_insumos = async function() {
           await render();
     };
 
-    // ---- TRANSFERÃNCIA ----
+    // ---- TRANSFERÊNCIA ----
     window._ins_transferir = function(idx) {
           _transfIdx = idx;
           var ins = _insumos[idx];
@@ -205,7 +205,7 @@ window.module_insumos = async function() {
           if (!ins) return;
           var dest = document.getElementById('ins_transf_dest').value || null;
           var qtd = parseFloat(document.getElementById('ins_transf_qtd').value);
-          if (!qtd || qtd <= 0) { alert('Informe uma quantidade vÃ¡lida.'); return; }
+          if (!qtd || qtd <= 0) { alert('Informe uma quantidade válida.'); return; }
           if ((ins.estoque_atual || 0) < qtd) { alert('Estoque insuficiente para transferir.'); return; }
           var btn = document.querySelector('#ins_modal_transf button:last-child');
           if (btn) { btn.disabled = true; btn.textContent = 'Transferindo...'; }
@@ -226,7 +226,7 @@ window.module_insumos = async function() {
           await render();
     };
 
-    // ---- FORMULÃRIO (novo/editar) ----
+    // ---- FORMULÁRIO (novo/editar) ----
     window._ins_abrirForm = function(idx) {
           _formIdx = idx;
           var ins = idx >= 0 ? _insumos[idx] : null;
@@ -249,9 +249,9 @@ window.module_insumos = async function() {
             + '<input id="ins_f_un" type="text" value="' + (ins ? ins.unidade || '' : '') + '" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box">'
             + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">Estoque Atual</label>'
             + '<input id="ins_f_est" type="number" min="0" step="0.01" value="' + (ins ? ins.estoque_atual || 0 : 0) + '" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box">'
-            + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">Estoque MÃ­nimo</label>'
+            + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">Estoque Mínimo</label>'
             + '<input id="ins_f_min" type="number" min="0" step="0.01" value="' + (ins ? ins.estoque_minimo || 0 : 0) + '" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box">'
-            + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">PreÃ§o UnitÃ¡rio (R$)</label>'
+            + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">Preço Unitário (R$)</label>'
             + '<input id="ins_f_preco" type="number" min="0" step="0.01" value="' + (ins ? ins.preco_unitario || 0 : 0) + '" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:12px;box-sizing:border-box">'
             + '<label style="display:block;margin-bottom:6px;font-size:13px;font-weight:600">Fazenda</label>'
             + '<select id="ins_f_faz" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;margin-bottom:20px">' + fazOpts + '</select>'

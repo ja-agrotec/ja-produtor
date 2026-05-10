@@ -475,6 +475,35 @@ window.module_fechamento_safra = async function() {
 
     html += "</div>"
     c.innerHTML = "<div style=\"padding:16px\">" + html + "</div>";
+    // --- Documentos vinculados a este fechamento ---
+    (async () => {
+      try {
+        const { data: _dList } = await sb.from('documentos')
+          .select('*').eq('modulo_origem', 'fechamento')
+          .eq('entidade_id', fechId).order('created_at', { ascending: false });
+        const _docs = _dList || [];
+        const _tIco = { NOTA_FISCAL: '🧾', CONTRATO: '📝', LAUDO_LABORATORIAL: '🔬', RELATORIO_TECNICO: '📊', OUTROS: '📎' };
+        let _dHtml = '<div style="margin-top:16px;border-top:1px solid rgba(0,0,0,.15);padding-top:14px">';
+        _dHtml += '<div style="font-size:11px;font-weight:700;color:rgba(45,125,50,.8);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📁 Documentos do Fechamento</div>';
+        if (!_docs.length) {
+          _dHtml += '<div style="font-size:12px;color:#888;font-style:italic;margin-bottom:10px">Nenhum documento anexado a este fechamento.</div>';
+        } else {
+          _docs.forEach(d => {
+            const ico = _tIco[d.tipo_documento] || '📎';
+            _dHtml += '<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.05);border-radius:6px;padding:7px 10px;margin-bottom:4px">';
+            _dHtml += '<span style="font-size:18px">' + ico + '</span>';
+            _dHtml += '<div style="flex:1"><div style="font-size:12px;font-weight:600">' + (d.nome_arquivo || '').replace(/</g, '&lt;') + '</div>';
+            _dHtml += '<div style="font-size:11px;color:#666">' + (d.descricao || '') + '</div></div>';
+            if (d.url_arquivo) _dHtml += '<a href="' + d.url_arquivo + '" target="_blank" rel="noopener" style="font-size:11px;color:#2d7d32">🔗 Abrir</a>';
+            _dHtml += '</div>';
+          });
+        }
+        const _safLbl = safra ? ((safra.cultura || '') + ' ' + (safra.ano_agricola || '')).trim() : fechId.slice(0,8);
+        _dHtml += '<button onclick="if(window.AdminDocumentos){window.AdminDocumentos.abrirUpload(\'fechamento\',\'' + fechId + '\',\'Fechamento: ' + '\'+_safLbl+\'' + '\')}" style="margin-top:8px;background:rgba(45,125,50,.15);border:1px solid rgba(45,125,50,.3);color:#2d7d32;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600">📁 + Anexar Documento</button>';
+        _dHtml += '</div>';
+        if (c) c.insertAdjacentHTML('beforeend', _dHtml);
+      } catch(_e) { console.warn('Docs fechamento:', _e); }
+    })();
   };
 
   // Confirm fechamento

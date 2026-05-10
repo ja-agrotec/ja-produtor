@@ -174,7 +174,7 @@ window.module_lancamentos = async function() {
     }).join("");
     const maqsDoFaz = fazAtual ? _maquinas.filter(function(m){return m.fazenda_id===fazAtual;}) : _maquinas;
     const maqOpts = maqsDoFaz.map(function(m){
-      return "<option value=\""+m.id+"\" data-custo=\""+( m.custo_hora||0)+"\" data-tc=\""+( m.tipo_cobranca||"por_hora")+"\" data-custo-ha=\""+( m.custo_ha||0)+"\" data-custo-dia=\""+( m.custo_dia||0)+"\"""+((l&&l.maquina_id===m.id)?" selected":"")+">"+esc(m.nome)+"</option>";
+      return "<option value=\""+m.id+"\" data-custo=\""+( m.custo_hora||0)+"\" data-tc=\""+( m.tipo_cobranca||"por_hora")+"\" data-custo-ha=\""+( m.custo_ha||0)+"\" data-custo-dia=\""+( m.custo_dia||0)+"\""+((l&&l.maquina_id===m.id)?" selected":"")+">"+esc(m.nome)+"</option>";
     }).join("");
     const insumoOpts = _buildInsumoOpts(_insumos, false);
     const unidades = ["kg","L","g","mL","sc","un","cx","t","h","d"];

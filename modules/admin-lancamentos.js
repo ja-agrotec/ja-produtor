@@ -312,7 +312,13 @@ window.module_lancamentos = async function() {
         closeModal(); render();
       }
     );
-    setTimeout(function(){ var e=document.getElementById("lanc_desc"); if(e) e.focus(); }, 100);
+    setTimeout(function(){
+    var e=document.getElementById("lanc_desc"); if(e) e.focus();
+    // Auto-aplica tipo_cobranca da categoria inicial
+    var catSel=document.getElementById("lanc_cat");
+    if(catSel && catSel.value && typeof window._lanc_onCatChange==="function")
+      window._lanc_onCatChange(catSel.value);
+  }, 120);
   };
 
   // When machine selected: show horas section

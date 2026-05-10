@@ -359,6 +359,53 @@ window.module_vendas_graos = async function() {
       + "<button onclick=\"document.getElementById('vgModalVer').remove();\" style=\"background:#eee;border:none;border-radius:8px;padding:8px 20px;cursor:pointer\">Fechar</button></div>"
       + "</div>";
     document.body.appendChild(modal);
+    // --- Documentos vinculados a esta venda ---
+    (async () => {
+      try {
+        const { data: _dList } = await sb.from('documentos')
+          .select('*').eq('modulo_origem', 'vendas')
+          .eq('entidade_id', id).order('created_at', { ascending: false });
+        const _docs = _dList || [];
+        const _tIco = { NOTA_FISCAL: '🧾', CONTRATO: '📝', LAUDO_LABORATORIAL: '🔬',
+          FOTO_AMOSTRA: '📷', FOTO_LOTE: '📸', FOTO_CARGA: '🚛',
+          RELATORIO_TECNICO: '📊', CERTIFICADO: '🏅', DOCUMENTO_TRANSPORTE: '📦',
+          RASTREABILIDADE: '🔍', ANALISE_SOLO: '🌱', OUTROS: '📎' };
+        const _tLbl = { NOTA_FISCAL: 'Nota Fiscal', CONTRATO: 'Contrato', LAUDO_LABORATORIAL: 'Laudo Lab.',
+          FOTO_AMOSTRA: 'Foto Amostra', FOTO_LOTE: 'Foto Lote', FOTO_CARGA: 'Foto Carga',
+          RELATORIO_TECNICO: 'Relatório Técnico', CERTIFICADO: 'Certificado',
+          DOCUMENTO_TRANSPORTE: 'Doc. Transporte', RASTREABILIDADE: 'Rastreabilidade',
+          ANALISE_SOLO: 'Análise de Solo', OUTROS: 'Outros' };
+        let _dHtml = '<div style="margin:0 24px 16px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px">';
+        _dHtml += '<div style="font-size:11px;font-weight:700;color:rgba(124,179,66,.7);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px">📁 Documentos da Venda</div>';
+        if (!_docs.length) {
+          _dHtml += '<div style="font-size:12px;color:#888;font-style:italic;margin-bottom:10px">Nenhum documento anexado a esta venda.</div>';
+        } else {
+          _dHtml += '<div style="display:flex;flex-direction:column;gap:5px;margin-bottom:10px">';
+          _docs.forEach(d => {
+            const ico = _tIco[d.tipo_documento] || '📎';
+            const lbl = _tLbl[d.tipo_documento] || d.tipo_documento;
+            const nm = (d.nome_arquivo || '').replace(/</g, '&lt;');
+            const desc = d.descricao ? ' — ' + d.descricao.slice(0, 40) : '';
+            _dHtml += '<div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border-radius:6px;padding:7px 10px">';
+            _dHtml += '<span style="font-size:18px">' + ico + '</span>';
+            _dHtml += '<div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:600;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + nm + '</div>';
+            _dHtml += '<div style="font-size:11px;color:#888">' + lbl + desc + '</div></div>';
+            if (d.url_arquivo) _dHtml += '<a href="' + d.url_arquivo + '" target="_blank" rel="noopener" style="font-size:11px;color:#7cb342;text-decoration:none;white-space:nowrap">🔗 Abrir</a>';
+            _dHtml += '</div>';
+          });
+          _dHtml += '</div>';
+        }
+        const _vNum = v ? (v.numero_contrato || id.slice(0,8)) : id.slice(0,8);
+        _dHtml += '<button onclick="if(window.AdminDocumentos){window.AdminDocumentos.abrirUpload(\'vendas\',\'' + id + '\',\'Venda: ' + _vNum + '\')}" style="background:rgba(124,179,66,.15);border:1px solid rgba(124,179,66,.3);color:#7cb342;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600">📁 + Anexar Documento</button>';
+        _dHtml += '</div>';
+        const _mEl = document.getElementById('vgModalVer');
+        if (_mEl) {
+          const _tbl = _mEl.querySelector('table');
+          if (_tbl) _tbl.insertAdjacentHTML('afterend', _dHtml);
+          else _mEl.insertAdjacentHTML('beforeend', _dHtml);
+        }
+      } catch(_e) { console.warn('Docs venda:', _e); }
+    })();
   };
 
   // ---- EDITAR CONTRATO ----

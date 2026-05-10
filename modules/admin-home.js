@@ -143,6 +143,12 @@ window.module_home = async function() {
   } catch(e) { climaHtml = "<div style=\"color:#ccc;font-size:12px\">Clima indisponível</div>"; }
 
 var html = "";
+  // BOLSA / MERCADO WIDGET
+  html += '<div id="_bolsaWidget" style="background:#0d2a0d;border-radius:8px;padding:10px 16px;margin-bottom:14px;display:flex;align-items:center;flex-wrap:wrap;gap:10px 20px;min-height:42px;">' +
+          '<span style="color:#7ed957;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">📊 Cotações</span>' +
+          '<span id="_bolsaTicker" style="color:#aaa;font-size:12px;">Carregando cotações...</span>' +
+          '</div>';
+
   // HERO BANNER
   var _saudacao = (function(){
     var h = new Date().getHours();
@@ -431,5 +437,67 @@ var html = "";
   html += "</div>"
 
   c.innerHTML = "<div style=\"padding:16px\">" + html + "</div>";
+  // Popula widget de cotações após render
+  (async function() {
+    try {
+      var _bEl = document.getElementById('_bolsaTicker');
+      if (!_bEl) return;
+      var _bFx = null;
+      try {
+        var _fxR = await fetch('https://economia.awesomeapi.com.br/json/last/USD-BRL');
+        var _fxD = await _fxR.json();
+        _bFx = parseFloat(_fxD.USDBRL.bid);
+      } catch(e) {}
+      var { data: _bVendas } = await sb.from('vendas_graos')
+        .select('cultura,preco_saca,data_contrato')
+        .order('data_contrato', {ascending: false})
+        .limit(50);
+      var _bCult = {};
+      (_bVendas || []).forEach(function(v) {
+        if (v.cultura && v.preco_saca && !_bCult[v.cultura]) {
+          _bCult[v.cultura] = v.preco_saca;
+        }
+      });
+      if (Object.keys(_bCult).length === 0) {
+        var { data: _bSaf } = await sb.from('safras').select('cultura').limit(20);
+        (_bSaf || []).forEach(function(s) {
+          if (s.cultura && !_bCult[s.cultura]) _bCult[s.cultura] = null;
+        });
+      }
+      var _bItems = [];
+      if (_bFx) {
+        _bItems.push('<span style="white-space:nowrap;font-size:12px;">' +
+          '<span style="color:#7ed957;font-weight:600;">USD/BRL</span> ' +
+          '<span style="color:#fff;font-weight:700;">R$ ' + _bFx.toFixed(4) + '</span>' +
+          '</span>');
+      }
+      var _bIcons = {Soja:'🌱',Milho:'🌽',Algodao:'☁️',Arroz:'🌾',Trigo:'🌾',Cafe:'☕',Cana:'🎋',OUTRAS:'🌿'};
+      Object.keys(_bCult).sort().forEach(function(cult) {
+        var preco = _bCult[cult];
+        var icon = _bIcons[cult] || '🌿';
+        if (preco) {
+          _bItems.push('<span style="white-space:nowrap;font-size:12px;border-left:1px solid #2d4a2d;padding-left:16px;">' +
+            icon + ' <span style="color:#9ec87a;font-weight:600;">' + cult + '</span> ' +
+            '<span style="color:#fff;font-weight:700;">R\$ ' + parseFloat(preco).toFixed(2) + '/sc</span>' +
+            '<span style="color:#666;font-size:10px;margin-left:4px;">(contratos)</span>' +
+            '</span>');
+        } else {
+          _bItems.push('<span style="white-space:nowrap;font-size:12px;border-left:1px solid #2d4a2d;padding-left:16px;">' +
+            icon + ' <span style="color:#9ec87a;font-weight:600;">' + cult + '</span>' +
+            '<span style="color:#888;font-size:11px;margin-left:6px;">sem contratos</span>' +
+            '</span>');
+        }
+      });
+      var _bNow = new Date();
+      var _bTime = _bNow.getHours().toString().padStart(2,'0') + ':' + _bNow.getMinutes().toString().padStart(2,'0');
+      _bItems.push('<span style="color:#555;font-size:10px;white-space:nowrap;margin-left:auto;">atualizado ' + _bTime + '</span>');
+      _bEl.style.color = '#fff';
+      _bEl.innerHTML = _bItems.join('');
+    } catch(e) {
+      var _bEl2 = document.getElementById('_bolsaTicker');
+      if (_bEl2) _bEl2.textContent = 'Cota\u00E7\u00F5es indispon\u00EDveis';
+    }
+  })();
+
 };
 window.module_home();

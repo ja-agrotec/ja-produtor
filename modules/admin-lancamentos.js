@@ -259,7 +259,7 @@ window.module_lancamentos = async function() {
       "</div></div>"+
       // Quantidade + Unidade (hidden when machine selected, uses horas instead)
       "<div class=\"form-field\" id=\"lanc_qtd_wrap\" style=\"display:"+(temMaq?"none":"block")+"\"><label>Quantidade</label>"+
-      "<input id=\"lanc_qtd\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+((l&&!l.maquina_id&&l.quantidade)||"")+" oninput=\"window._lanc_calcCustoUnidade()\"/></div>"+
+      "<input id=\"lanc_qtd\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+((l&&!l.maquina_id&&l.quantidade)||"")+"\" oninput='window._lanc_calcCustoUnidade()'/></div>"+
       "<div class=\"form-field\" id=\"lanc_unid_wrap\" style=\"display:"+(temMaq?"none":"block")+"\"><label>Unidade</label>"+
       "<select id=\"lanc_unid\"><option value=\"\">Selecione...</option>"+unidOpts+"</select></div>"+
       "<div class=\"form-field\"><label>Custo Total (R$) *</label>"+

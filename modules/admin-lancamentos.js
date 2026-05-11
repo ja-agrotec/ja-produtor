@@ -16,7 +16,7 @@ window.module_lancamentos = async function() {
       sb.from("safras").select("id,nome,fazenda_id,status").order("nome"),
       sb.from("talhoes").select("id,nome,fazenda_id,segue_certificacao").order("nome"),
       sb.from("operadores").select("id,nome,fazenda_id").order("nome"),
-      sb.from("insumos").select("id,nome,unidade,preco_unitario,certificacao_permitida,fazenda_id").order("nome"),
+      sb.from("insumos").select("id,nome,unidade,preco_unitario,certificacao_permitida,fazenda_id,culturas,dose_recomendada,modo_aplicacao,principio_ativo").order("nome"),
       sb.from("maquinas").select("id,nome,fazenda_id,tipo,custo_hora,horimetro_atual").order("nome"),
       sb.from("lancamentos").select("*").order("data_lancamento",{ascending:false}).limit(300),
     sb.from("categorias_lancamento").select("id,nome,tipo").order("nome")
@@ -258,7 +258,7 @@ window.module_lancamentos = async function() {
       "</div></div>"+
       // Quantidade + Unidade (hidden when machine selected, uses horas instead)
       "<div class=\"form-field\" id=\"lanc_qtd_wrap\" style=\"display:"+(temMaq?"none":"block")+"\"><label>Quantidade</label>"+
-      "<input id=\"lanc_qtd\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+((l&&!l.maquina_id&&l.quantidade)||"")+"\"/></div>"+
+      "<input id=\"lanc_qtd\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+((l&&!l.maquina_id&&l.quantidade)||"")+"\ oninput=\"window._lanc_calcCustoUnidade()\""/></div>"+
       "<div class=\"form-field\" id=\"lanc_unid_wrap\" style=\"display:"+(temMaq?"none":"block")+"\"><label>Unidade</label>"+
       "<select id=\"lanc_unid\"><option value=\"\">Selecione...</option>"+unidOpts+"</select></div>"+
       "<div class=\"form-field\"><label>Custo Total (R$) *</label>"+
@@ -431,6 +431,18 @@ window.module_lancamentos = async function() {
   };
 
   // Auto-fill insumo unit + calculate cost
+  window._lanc_calcCustoUnidade = function(){
+    var qtdEl = document.getElementById('lanc_qtd');
+    var custoEl = document.getElementById('lanc_custo');
+    if(!qtdEl || !custoEl) return;
+    var qtd = parseFloat(qtdEl.value) || 0;
+    var insEl = document.getElementById('lanc_insumo');
+    var insId = insEl ? insEl.value : '';
+    var ins = (window._lancInsumos||[]).find(function(i){ return i.id===insId; });
+    if(ins && ins.preco_unitario > 0 && qtd > 0){
+      custoEl.value = (qtd * ins.preco_unitario).toFixed(2);
+    }
+  };
   window._lanc_onInsumoChange = function(insId){
     if(!insId) return;
     var ins = _insumos.find(function(i){return i.id===insId;});

@@ -161,11 +161,11 @@ window.module_lancamentos = async function() {
     const fazOpts = _fazendas.map(function(f){
       return "<option value=\""+f.id+"\""+((l&&l.fazenda_id===f.id)?" selected":"")+">"+esc(f.nome)+"</option>";
     }).join("");
-    const safsDoFaz = fazAtual ? _safras.filter(function(s){return s.fazenda_id===fazAtual;}) : _safras;
+    const safsDoFaz = fazAtual ? _safras.filter(function(s){return s.fazenda_id===fazAtual;}) : [];
     const safraOpts = safsDoFaz.map(function(s){
       return "<option value=\""+s.id+"\""+((l&&l.safra_id===s.id)?" selected":"")+">"+esc(s.nome)+"</option>";
     }).join("");
-    const talsDoFaz = fazAtual ? _talhoes.filter(function(t){return t.fazenda_id===fazAtual;}) : _talhoes;
+    const talsDoFaz = fazAtual ? _talhoes.filter(function(t){return t.fazenda_id===fazAtual;}) : [];
     const talhaoOpts = talsDoFaz.map(function(t){
       return "<option value=\""+t.id+"\""+((l&&l.talhao_id===t.id)?" selected":"")+">"+esc(t.nome)+"</option>";
     }).join("");
@@ -173,7 +173,7 @@ window.module_lancamentos = async function() {
     const opOpts = opsDoFaz.map(function(o){
       return "<option value=\""+o.id+"\""+((l&&l.operador_id===o.id)?" selected":"")+">"+esc(o.nome)+"</option>";
     }).join("");
-    const maqsDoFaz = fazAtual ? _maquinas.filter(function(m){return m.fazenda_id===fazAtual;}) : _maquinas;
+    const maqsDoFaz = fazAtual ? _maquinas.filter(function(m){return m.fazenda_id===fazAtual;}) : [];
     const maqOpts = maqsDoFaz.map(function(m){
       return "<option value=\""+m.id+"\" data-custo=\""+( m.custo_hora||0)+"\" data-tc=\""+( m.tipo_cobranca||"por_hora")+"\" data-custo-ha=\""+( m.custo_ha||0)+"\" data-custo-dia=\""+( m.custo_dia||0)+"\""+((l&&l.maquina_id===m.id)?" selected":"")+">"+esc(m.nome)+"</option>";
     }).join("");
@@ -265,7 +265,7 @@ window.module_lancamentos = async function() {
       "<input id=\"lanc_custo\" type=\"number\" step=\"0.01\" min=\"0\" value=\""+((l&&l.custo_total)||"")+"\"/></div>"+
       "<div class=\"form-field\"><label>Nota Fiscal</label>"+
       "<input id=\"lanc_nf\" value=\""+esc((l&&l.nota_fiscal)||"")+"\"/></div>"+
-      "<div class=\"form-field\" style=\"grid-column:1/-1\"><label>Descri\u00E7\u00E3o *</label>"+
+      "<div class=\"form-field\" style=\"grid-column:1/-1\"><label>Descri\u00E7\u00E3o</label>"+
       "<input id=\"lanc_desc\" value=\""+esc((l&&l.descricao)||"")+"\"/></div>"+
       "<div class=\"form-field\" style=\"grid-column:1/-1\"><label>Observa\u00E7\u00F5es</label>"+
       "<textarea id=\"lanc_obs\" rows=\"2\" style=\"width:100%;resize:vertical;padding:8px;border:1px solid var(--brd);border-radius:var(--r)\">"+esc((l&&l.observacoes)||"")+"</textarea></div>"+
@@ -318,6 +318,7 @@ window.module_lancamentos = async function() {
         if(!data) { toast("Informe a data","bad"); return; }
         if(!custo || custo <= 0) { toast("Informe o custo total","bad"); return; }
         if(!fazId) { toast("Selecione a fazenda","bad"); return; }
+        if(!talId) { toast("Informe o talh\u00E3o","bad"); return; }
         if(!finalDesc)  { toast("Informe a descri\u00E7\u00E3o","bad"); return; }
         if(usingDia && !tipoServ) { toast("Selecione o tipo de serviço","bad"); return; }
         if(maqId && !usingHA && !usingDia && (!qtd || qtd <= 0)) { toast("Informe as horas trabalhadas","bad"); return; }
@@ -554,6 +555,10 @@ window.module_lancamentos = async function() {
     } else {
       if(qw)  qw.style.display="block";
       if(uw)  uw.style.display="block";
+    // Limpar valores de custo ao trocar categoria
+    ['lanc_dias','lanc_custo_dia','lanc_horas','lanc_custo_hora','lanc_area_ha','lanc_custo_ha','lanc_qtd','lanc_custo'].forEach(function(id){
+      var el = document.getElementById(id); if(el) el.value = '';
+    });
     }
   };
   window._lanc_del = function(btn){

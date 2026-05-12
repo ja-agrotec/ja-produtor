@@ -629,6 +629,13 @@ window.module_lancamentos = async function() {
       var el = document.getElementById(id); if(el) el.value = '';
     });
     }
+    // Atualiza insumos filtrados pela categoria
+    var _insSel3 = document.getElementById('lanc_insumo');
+    if(_insSel3 && window._buildInsumoOpts && window._lancInsumos) {
+      var catEl3 = document.getElementById('lanc_cat');
+      var catN3 = catEl3 && catEl3.selectedIndex>=0 ? catEl3.options[catEl3.selectedIndex].text : '';
+      _insSel3.innerHTML = '<option value="">Nenhum</option>' + window._buildInsumoOpts(window._lancInsumos, false, catN3);
+    }
   };
   window._lanc_del = function(btn){
     var id = btn.dataset.id;

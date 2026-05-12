@@ -366,6 +366,12 @@ window.module_fechamento_safra = async function() {
     html += "<div style=\"font-size:12px;color:" + (tot.roi>=0?"rgba(45,125,50,0.8)":"rgba(198,40,40,0.8)") + "\">ROI</div><div style=\"font-size:18px;font-weight:800;color:"+(tot.roi>=0?"#2d7d32":"#c62828")+"\">"+(typeof tot.roi!=="undefined"?tot.roi.toFixed(1):"-")+"%</div>"
     html += "</div>"
 
+    // IA RESUMO DA SAFRA (placeholder - preenchido async apos render)
+    html += "<div id=\"fsIaResumo\" style=\"background:linear-gradient(135deg,#0d2a0d,#1a4b1a);border-radius:14px;padding:18px 22px;margin-bottom:20px;color:#fff;box-shadow:0 2px 10px rgba(0,0,0,0.15)\">"
+    html += "<div style=\"display:flex;align-items:center;gap:10px;margin-bottom:10px\"><div style=\"font-size:22px\">&#129302;</div><div><div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:#9ec87a;font-weight:700\">IA &middot; Resumo da Safra</div><div style=\"font-size:14px;color:#cfe6c0\">Analisando dados...</div></div></div>"
+    html += "<div id=\"fsIaContent\" style=\"font-size:13px;color:#e0eed5;line-height:1.55\">Aguarde, processando comparativos e recomendacoes...</div>"
+    html += "</div>"
+
     // 6-KPI row
     html += "<div style=\"display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:20px\">"
     html += "<div style=\"background:#fff;border-radius:10px;padding:14px;border-top:3px solid #2d7d32;box-shadow:0 1px 4px rgba(0,0,0,0.06);text-align:center\">"
@@ -500,6 +506,81 @@ window.module_fechamento_safra = async function() {
 
     html += "</div>"
     c.innerHTML = "<div style=\"padding:16px\">" + html + "</div>";
+
+    // --- IA RESUMO DA SAFRA (heuristic) ---
+    (async function(){
+      try {
+        var iaEl = document.getElementById("fsIaContent");
+        if (!iaEl) return;
+        var cultura = (safra && safra.cultura) || "";
+        var histRes = await sb.from("fechamento_safra").select("custo_sc,produtividade_sc_ha,margem_pct,resultado_liquido,safras(cultura,ano_agricola)").eq("status","confirmado").limit(50);
+        var hist = (histRes.data || []).filter(function(h){ return h.safras && h.safras.cultura===cultura; });
+        var avgCustoSc = hist.length ? hist.reduce(function(a,h){ return a+parseFloat(h.custo_sc||0); },0)/hist.length : 0;
+        var avgProd = hist.length ? hist.reduce(function(a,h){ return a+parseFloat(h.produtividade_sc_ha||0); },0)/hist.length : 0;
+        var avgMargem = hist.length ? hist.reduce(function(a,h){ return a+parseFloat(h.margem_pct||0); },0)/hist.length : 0;
+        var benchProd = {Soja:60,Milho:170,Cafe:30,Cana:1500,Algodao:280,Trigo:55,Arroz:120};
+        var benchCustoSc = {Soja:90,Milho:35,Cafe:600,Cana:60,Algodao:150,Trigo:80,Arroz:55};
+        var bP = benchProd[cultura] || avgProd;
+        var bC = benchCustoSc[cultura] || avgCustoSc;
+        var cats = [{n:"Insumos",v:tot.totInsumos},{n:"Mao de Obra",v:tot.totMaoObra},{n:"Maquinas",v:tot.totMaquinas},{n:"Depreciacoes",v:tot.totDep},{n:"Outros",v:tot.totOutros}];
+        cats.sort(function(a,b){return b.v-a.v;});
+        var maior = cats[0];
+        var maiorPct = tot.totCusto>0 ? (maior.v/tot.totCusto)*100 : 0;
+        function score(){
+          var s = 0;
+          if (tot.margemPct >= 25) s+=2; else if (tot.margemPct >= 10) s+=1; else if (tot.margemPct < 0) s-=2;
+          if (bP>0) { if (tot.prodMedia >= bP*1.05) s+=2; else if (tot.prodMedia >= bP*0.9) s+=1; else if (tot.prodMedia < bP*0.7) s-=2; }
+          if (bC>0) { if (tot.custoScGeral <= bC*0.9) s+=2; else if (tot.custoScGeral <= bC*1.1) s+=1; else if (tot.custoScGeral > bC*1.3) s-=2; }
+          return s;
+        }
+        var sc = score();
+        var veredito = sc>=4?{txt:"Safra excelente",cor:"#7ed957",emoji:"&#127881;"}:sc>=2?{txt:"Safra positiva",cor:"#9ec87a",emoji:"&#128077;"}:sc>=0?{txt:"Safra na media",cor:"#ffc107",emoji:"&#128528;"}:{txt:"Safra abaixo do esperado",cor:"#ef5350",emoji:"&#9888;"};
+        function cmp(real, ref, inverso){
+          if (!ref) return {txt:"sem referencia",cor:"#999"};
+          var diff = ((real-ref)/ref)*100;
+          var bom = inverso ? diff<=0 : diff>=0;
+          var cor = Math.abs(diff)<5 ? "#ffc107" : (bom ? "#7ed957" : "#ef5350");
+          var sinal = diff>=0?"+":"";
+          return {txt: sinal+diff.toFixed(1)+"%", cor: cor};
+        }
+        var cmpCustoSc = cmp(tot.custoScGeral, bC, true);
+        var cmpProd = cmp(tot.prodMedia, bP, false);
+        var cmpMargem = cmp(tot.margemPct, avgMargem, false);
+        var recs = [];
+        if (maiorPct > 45) recs.push("O grupo de custo \""+maior.n+"\" representa "+maiorPct.toFixed(0)+"% do total - revise contratos, negocie volumes e busque alternativas para reduzir essa categoria.");
+        if (bP && tot.prodMedia < bP*0.85) recs.push("Produtividade ("+tot.prodMedia.toFixed(1)+" sc/ha) esta abaixo do benchmark da cultura ("+bP+" sc/ha). Avalie manejo de solo, espacamento, populacao e janela de plantio.");
+        if (bC && tot.custoScGeral > bC*1.2) recs.push("Custo por saca ("+tot.custoScGeral.toFixed(2)+") esta acima do benchmark ("+bC+"). Identifique talhoes menos eficientes e considere reduzir area ou mudar cultura.");
+        if (tot.margemPct < 10) recs.push("Margem apertada ("+tot.margemPct.toFixed(1)+"%). Avalie vendas antecipadas (hedge) e renegociacao de insumos para a proxima safra.");
+        if (tot.totDep/Math.max(tot.totCusto,1) > 0.18) recs.push("Depreciacao consome "+((tot.totDep/tot.totCusto)*100).toFixed(0)+"% do custo. Revise frota de maquinas e considere terceirizar operacoes de baixa utilizacao.");
+        if (hist.length>=2) {
+          var ultHist = hist[0];
+          if (parseFloat(ultHist.custo_sc||0) > 0 && tot.custoScGeral > parseFloat(ultHist.custo_sc)*1.15) recs.push("Custo/sc subiu "+(((tot.custoScGeral/parseFloat(ultHist.custo_sc))-1)*100).toFixed(0)+"% vs safra anterior ("+(ultHist.safras.ano_agricola||"")+"). Investigue causas: insumos, perdas, area.");
+        }
+        if (recs.length===0) recs.push("Indicadores dentro do esperado. Mantenha o padrao de gestao e considere expandir area produtiva nessa cultura.");
+        var sortTal = talResults.slice().sort(function(a,b){return b.produtividade_sc_ha-a.produtividade_sc_ha;});
+        var melhor = sortTal[0];
+        var pior = sortTal[sortTal.length-1];
+        var html2 = "";
+        html2 += "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:14px\">"
+          + "<div style=\"background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px\"><div style=\"font-size:10px;color:#9ec87a;text-transform:uppercase;letter-spacing:1px\">Veredito</div><div style=\"font-size:16px;font-weight:700;color:"+veredito.cor+"\">"+veredito.emoji+" "+veredito.txt+"</div></div>"
+          + "<div style=\"background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px\"><div style=\"font-size:10px;color:#9ec87a;text-transform:uppercase;letter-spacing:1px\">Produtividade vs bench</div><div style=\"font-size:16px;font-weight:700;color:"+cmpProd.cor+"\">"+cmpProd.txt+"</div><div style=\"font-size:10px;color:#9ec87a\">bench "+cultura+": "+bP+" sc/ha</div></div>"
+          + "<div style=\"background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px\"><div style=\"font-size:10px;color:#9ec87a;text-transform:uppercase;letter-spacing:1px\">Custo/sc vs bench</div><div style=\"font-size:16px;font-weight:700;color:"+cmpCustoSc.cor+"\">"+cmpCustoSc.txt+"</div><div style=\"font-size:10px;color:#9ec87a\">bench: R$ "+bC+"</div></div>"
+          + "<div style=\"background:rgba(255,255,255,0.08);border-radius:8px;padding:10px 12px\"><div style=\"font-size:10px;color:#9ec87a;text-transform:uppercase;letter-spacing:1px\">Margem vs media</div><div style=\"font-size:16px;font-weight:700;color:"+cmpMargem.cor+"\">"+cmpMargem.txt+"</div><div style=\"font-size:10px;color:#9ec87a\">media historica: "+avgMargem.toFixed(1)+"%</div></div>"
+          + "</div>";
+        html2 += "<div style=\"margin-bottom:12px;font-size:13px;line-height:1.55\">"
+          + "<strong style=\"color:#9ec87a\">Diagnostico:</strong> "
+          + "Principal grupo de custo: <strong>"+maior.n+"</strong> ("+maiorPct.toFixed(1)+"% do total). "
+          + (melhor && pior && melhor.talhao_id!==pior.talhao_id ? "Melhor talhao: <strong>"+melhor.nome+"</strong> ("+melhor.produtividade_sc_ha.toFixed(1)+" sc/ha). Pior: <strong>"+pior.nome+"</strong> ("+pior.produtividade_sc_ha.toFixed(1)+" sc/ha). " : "")
+          + "Base de comparacao: "+hist.length+" fechamento(s) anteriores de "+(cultura||"-")+"."
+          + "</div>";
+        html2 += "<div style=\"background:rgba(255,255,255,0.08);border-radius:8px;padding:12px 14px\">"
+          + "<div style=\"font-size:11px;color:#9ec87a;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:8px\">&#128161; Recomendacoes</div>";
+        recs.forEach(function(r){ html2 += "<div style=\"font-size:12px;color:#e0eed5;margin-bottom:6px;padding-left:14px;position:relative\"><span style=\"position:absolute;left:0;color:#7ed957\">&bull;</span>"+r+"</div>"; });
+        html2 += "</div>";
+        iaEl.innerHTML = html2;
+      } catch(e) { var ie=document.getElementById("fsIaContent"); if(ie) ie.innerHTML = "<span style=\"color:#ef5350\">Nao foi possivel gerar resumo de IA: "+e.message+"</span>"; }
+    })();
+
     // --- Documentos vinculados a este fechamento ---
     (async () => {
       try {

@@ -649,6 +649,7 @@ window.module_lancamentos = async function() {
       .map(function(i){ return '<option value=\''+i.id+'\'>'+ esc(i.nome)+'</option>'; })
       .join('');
   }
+  window._buildInsumoOpts = _buildInsumoOpts;
 
   async function render(){
     el.innerHTML = "<div style=\"padding:40px;text-align:center;color:var(--txt-s)\">\u23F3 Carregando...</div>";

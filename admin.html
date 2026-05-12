@@ -534,6 +534,9 @@ tbody tr:last-child td{border-bottom:none;}
     <div class="nav-item" data-module="operadores" onclick="loadModule('operadores',this)">
       <span class="nav-icon">👷</span> Operadores
     </div>
+    <div class="nav-item" data-module="despesas-fixas" onclick="loadModule('despesas-fixas',this)">
+      <span class="nav-icon">💼</span> Despesas Fixas
+    </div>
         <div style="height:1px;background:rgba(124,179,66,.08);margin:8px 2px;"></div>
         <div style="font-size:9px;font-weight:700;color:rgba(124,179,66,.4);letter-spacing:2px;text-transform:uppercase;padding:8px 14px 4px">ANALYTICS</div>
 
@@ -685,6 +688,7 @@ window.loadModule = function(name, el) {
     'insumos': ['Insumos', 'Estoque de insumos e produtos'],
     'maquinas': ['Máquinas', 'Frota de máquinas e equipamentos'],
     'operadores': ['Operadores', 'Cadastro de operadores e colaboradores'],
+    'despesas-fixas': ['Despesas Fixas', 'Custos fixos da propriedade (rateados nas safras)'],
     'dashboard': ['Painel Analítico', 'Indicadores e análises da operação'],
     'certificacao': ['Certificação', 'Controle de certificações das fazendas'],
     'analise-solo': ['Análise de Solo', 'Laudos e resultados de análise de solo'],
@@ -855,6 +859,7 @@ initAuth();
   // Bridge: map dash-module-names to underscore function names
   window['module_vendas-graos'] = async function() { await window.module_vendas_graos(); };
   window['module_fechamento-safra'] = async function() { await window.module_fechamento_safra(); };
+  window['module_despesas-fixas'] = async function() { await window.module_despesas_fixas(); };
 
     window['module_qualidade-lotes'] = async function() {
       var cont = document.getElementById('mainContent');

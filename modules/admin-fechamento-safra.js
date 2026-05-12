@@ -222,6 +222,29 @@ window.module_fechamento_safra = async function() {
     var depPorHa = areaTotal > 0 ? totalDepreciacaoAnual / areaTotal : 0;
 
     // =============================================
+    // STEP 3.5: Load despesas_fixas and prorate by safra duration
+    // =============================================
+    var dfRes = await sb.from("despesas_fixas").select("*").eq("ativo",true);
+    var dfList = (dfRes.data || []).filter(function(d){
+      return !d.fazenda_id || d.fazenda_id === fazendaId;
+    });
+    // Compute safra duration in months (data_plantio -> data_colheita)
+    var dtP = safra.data_plantio ? new Date(safra.data_plantio) : null;
+    var dtC = safra.data_colheita ? new Date(safra.data_colheita) : null;
+    var mesesSafra = 0;
+    if (dtP && dtC && dtC > dtP) {
+      mesesSafra = (dtC - dtP) / (1000*60*60*24*30.4375);
+    }
+    // Periodicidade -> meses
+    var perMeses = {mensal:1,bimestral:2,trimestral:3,semestral:6,anual:12};
+    var totalDespesasFixas = 0;
+    dfList.forEach(function(d){
+      var pm = perMeses[d.periodicidade] || 1;
+      var equivMensal = parseFloat(d.valor_mensal||0) / pm;
+      totalDespesasFixas += equivMensal * mesesSafra;
+    });
+
+    // =============================================
     // STEP 4: Cost breakdown per talhao
     // =============================================
     // Distribute lancamentos sem talhao proportionally by area
@@ -236,6 +259,8 @@ window.module_fechamento_safra = async function() {
         else custoSemTalhao.outros += v;
       }
     });
+    // Add despesas fixas prorated to outros (will be split by talhao area below)
+    custoSemTalhao.outros += totalDespesasFixas;
 
     // =============================================
     // STEP 5: Load receita from vendas_graos

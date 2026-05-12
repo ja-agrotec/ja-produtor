@@ -326,6 +326,37 @@ var html = "";
   html += "</div>"
   html += "</div>"
 
+  // ROW 3.5: LEMBRETES DIARIOS / ANTIERRO
+  var _lembHoje = new Date().toISOString().substring(0,10);
+  var _lembKey = 'lembHome_'+_lembHoje;
+  var _lembChecks = JSON.parse(localStorage.getItem(_lembKey) || '{}');
+  var _lembLancHoje = lancs.filter(function(l){ return l.data_lancamento===_lembHoje; }).length;
+  var _lembAntigos = lancs.filter(function(l){ var d=new Date(l.data_lancamento); var diff=(Date.now()-d.getTime())/(1000*60*60*24); return diff>30; }).length;
+  var _lembItens = [
+    {k:'lanc', icon:'&#128221;', txt:'Efetuar lan&ccedil;amentos do dia', det:_lembLancHoje>0?(_lembLancHoje+' j&aacute; registrado(s) hoje'):'Nenhum lan&ccedil;amento hoje', warn:_lembLancHoje===0, mod:'lancamentos'},
+    {k:'estoque', icon:'&#128230;', txt:'Conferir estoque m&iacute;nimo', det:insBaixos.length>0?(insBaixos.length+' insumo(s) abaixo do m&iacute;nimo'):'Todos os insumos OK', warn:insBaixos.length>0, mod:'insumos'},
+    {k:'maq', icon:'&#128666;', txt:'Atualizar leitura/manuten&ccedil;&atilde;o de m&aacute;quinas', det:'Revisar horas e manuten&ccedil;&otilde;es pendentes', warn:false, mod:'maquinas'},
+    {k:'ativos', icon:'&#127960;', txt:'Revisar ativos e deprecia&ccedil;&otilde;es', det:'Conferir ativos vendidos e deprecia&ccedil;&otilde;es do per&iacute;odo', warn:false, mod:'maquinas'},
+    {k:'antigos', icon:'&#9888;', txt:'Lan&ccedil;amentos antigos sem conferir', det:_lembAntigos>0?(_lembAntigos+' lan&ccedil;amento(s) com mais de 30 dias'):'Hist&oacute;rico em dia', warn:_lembAntigos>0, mod:'lancamentos'}
+  ];
+  window._lembCheck = function(k){ var s=JSON.parse(localStorage.getItem(_lembKey)||'{}'); s[k]=!s[k]; localStorage.setItem(_lembKey, JSON.stringify(s)); var el=document.getElementById('lemb_'+k); if(el){ el.style.textDecoration = s[k]?'line-through':'none'; el.style.opacity = s[k]?'0.5':'1'; } };
+  html += "<div style=\"background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.07);margin-bottom:20px\">"
+  html += "<div style=\"display:flex;justify-content:space-between;align-items:center;margin-bottom:12px\"><div style=\"font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#888;font-weight:700\">&#128197; Lembretes do Dia &middot; A&ccedil;&otilde;es Antierro</div><div style=\"font-size:11px;color:#bbb\">"+hoje+"</div></div>"
+  html += "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px\">"
+  _lembItens.forEach(function(it){
+    var done = !!_lembChecks[it.k];
+    var bg = it.warn ? '#fff8e1' : '#f8f9fa';
+    var bd = it.warn ? '#f57c00' : '#2d7d32';
+    html += "<div style=\"background:"+bg+";border-left:3px solid "+bd+";border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start\">"
+    html += "<input type=\"checkbox\" onchange=\"window._lembCheck('"+it.k+"')\" "+(done?'checked':'')+" style=\"margin-top:4px;cursor:pointer\"/>"
+    html += "<div id=\"lemb_"+it.k+"\" style=\"flex:1;"+(done?'text-decoration:line-through;opacity:0.5;':'')+"\">"
+    html += "<div style=\"font-size:13px;font-weight:600;color:#333\">"+it.icon+' '+it.txt+"</div>"
+    html += "<div style=\"font-size:11px;color:#666;margin-top:2px\">"+it.det+"</div>"
+    html += "<a href=\"#\" onclick=\"event.preventDefault();document.querySelector('[data-module="+it.mod+"]').click();\" style=\"font-size:11px;color:#1565c0;text-decoration:none;display:inline-block;margin-top:4px\">Abrir m&oacute;dulo &rarr;</a>"
+    html += "</div></div>"
+  });
+  html += "</div></div>"
+
   // ROW 4: DICA DO AGRONOMO + AÇÕES RÁPIDAS
   html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px\">"
 
@@ -451,39 +482,43 @@ var html = "";
         _bFx = parseFloat(_fxD.USDBRL.bid);
       } catch(e) {}
 
-      // Determina cultura principal: cultura com mais contratos de venda
-      var { data: _bVendas } = await sb.from('vendas_graos')
-        .select('cultura,preco_saca,data_contrato')
-        .order('data_contrato', {ascending: false})
-        .limit(100);
-
-      // Conta frequência por cultura
-      var _bCount = {};
-      var _bLastPrice = {};
-      (_bVendas || []).forEach(function(v) {
-        if (!v.cultura) return;
-        _bCount[v.cultura] = (_bCount[v.cultura] || 0) + 1;
-        if (!_bLastPrice[v.cultura] && v.preco_saca) _bLastPrice[v.cultura] = v.preco_saca;
+      var _bFazSel = sessionStorage.getItem('homeFazSel') || 'todas';
+      var _bTalhRes, _bSafRes;
+      if (_bFazSel && _bFazSel !== 'todas') {
+        _bTalhRes = await sb.from('talhoes').select('nome,area_ha,cultura_atual').eq('fazenda_id', _bFazSel).eq('ativo', true);
+        _bSafRes = await sb.from('safras').select('cultura,area_ha').eq('fazenda_id', _bFazSel).eq('status', 'aberta');
+      } else {
+        _bTalhRes = await sb.from('talhoes').select('nome,area_ha,cultura_atual').eq('ativo', true);
+        _bSafRes = await sb.from('safras').select('cultura,area_ha').eq('status', 'aberta');
+      }
+      var _bAreaPorCult = {};
+      (_bTalhRes.data || []).forEach(function(tt){
+        var c = (tt.cultura_atual || '').trim();
+        if (!c) return;
+        _bAreaPorCult[c] = (_bAreaPorCult[c] || 0) + parseFloat(tt.area_ha || 0);
       });
-
-      // Determina cultura principal pela maior frequência
+      if (Object.keys(_bAreaPorCult).length === 0) {
+        (_bSafRes.data || []).forEach(function(ss){
+          var c = (ss.cultura || '').trim();
+          if (!c) return;
+          _bAreaPorCult[c] = (_bAreaPorCult[c] || 0) + parseFloat(ss.area_ha || 0);
+        });
+      }
       var _bMainCult = null;
-      var _bMaxCount = 0;
-      Object.keys(_bCount).forEach(function(c) {
-        if (_bCount[c] > _bMaxCount) { _bMaxCount = _bCount[c]; _bMainCult = c; }
+      var _bMaxArea = 0;
+      Object.keys(_bAreaPorCult).forEach(function(c){
+        if (_bAreaPorCult[c] > _bMaxArea) { _bMaxArea = _bAreaPorCult[c]; _bMainCult = c; }
       });
-
-      // Fallback: safras se não há vendas
-      if (!_bMainCult) {
-        var { data: _bSaf } = await sb.from('safras').select('cultura').limit(50);
-        var _bSafCount = {};
-        (_bSaf || []).forEach(function(s) {
-          if (s.cultura) _bSafCount[s.cultura] = (_bSafCount[s.cultura] || 0) + 1;
-        });
-        var _bSafMax = 0;
-        Object.keys(_bSafCount).forEach(function(c) {
-          if (_bSafCount[c] > _bSafMax) { _bSafMax = _bSafCount[c]; _bMainCult = c; }
-        });
+      var _bLastPrice = {};
+      if (_bMainCult) {
+        var _vQ = sb.from('vendas_graos').select('cultura,preco_saca,data_contrato,fazenda_id').eq('cultura', _bMainCult).order('data_contrato',{ascending:false}).limit(20);
+        var _vRes = await _vQ;
+        var _vList = (_vRes.data || []);
+        if (_bFazSel && _bFazSel !== 'todas') {
+          var _vFaz = _vList.filter(function(v){ return v.fazenda_id === _bFazSel; });
+          if (_vFaz.length) _vList = _vFaz;
+        }
+        if (_vList[0]) _bLastPrice[_bMainCult] = _vList[0].preco_saca;
       }
 
       var _bIcons = {Soja:'🌱',Milho:'🌽',Algodao:'☁️',Arroz:'🌾',Trigo:'🌾',Cafe:'☕',Cana:'🎋',OUTRAS:'🌿'};

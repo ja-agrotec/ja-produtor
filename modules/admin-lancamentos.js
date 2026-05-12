@@ -11,7 +11,7 @@ window.module_lancamentos = async function() {
   function today(){ return new Date().toISOString().slice(0,10); }
 
   async function loadData(){
-    const [fa,sa,ta,op,ins,maq,lan,cats] = await Promise.all([
+    const [fa,sa,ta,op,ins,maq,lan,cats,atv] = await Promise.all([
       sb.from("fazendas").select("id,nome").order("nome"),
       sb.from("safras").select("id,nome,fazenda_id,status").order("nome"),
       sb.from("talhoes").select("id,nome,fazenda_id,segue_certificacao").order("nome"),
@@ -19,7 +19,8 @@ window.module_lancamentos = async function() {
       sb.from("insumos").select("id,nome,unidade,preco_unitario,certificacao_permitida,fazenda_id,culturas,dose_recomendada,modo_aplicacao,principio_ativo,categoria").order("nome"),
       sb.from("maquinas").select("id,nome,fazenda_id,tipo,custo_hora,horimetro_atual").order("nome"),
       sb.from("lancamentos").select("*").order("data_lancamento",{ascending:false}).limit(300),
-    sb.from("categorias_lancamento").select("id,nome,tipo").order("nome")
+    sb.from("categorias_lancamento").select("id,nome,tipo").order("nome"),
+      sb.from("ativos").select("id,nome,tipo,fazenda_id,valor_aquisicao,status").eq("status","ativo").order("nome")
     ]);
     _fazendas  = fa.data||[];
     _safras    = sa.data||[];
@@ -30,6 +31,7 @@ window.module_lancamentos = async function() {
     _maquinas  = maq.data||[];
     _lancamentos= lan.data||[];
     window._lancCategorias = (cats.data||[]);
+    window._lancAtivos = (atv.data||[]);
   }
 
   function calcStats(){
@@ -216,6 +218,8 @@ window.module_lancamentos = async function() {
       "<select id=\"lanc_insumo\" onchange=\"window._lanc_onInsumoChange(this.value)\"><option value=\"\">Nenhum</option>"+insumoOpts+"</select></div>"+
       "<div class=\"form-field\"><label>M\u00E1quina</label>"+
       "<select id=\"lanc_maq\" onchange=\"window._lanc_onMaqChange(this.value)\"><option value=\"\">Nenhuma</option>"+maqOpts+"</select></div>"+
+      "<div class=\"form-field\" id=\"lanc_ativo_wrap\" style=\"display:none\"><label>Ativo a vender *</label>"+
+      "<select id=\"lanc_ativo\"><option value=\"\">Selecione...</option></select></div>"+
       // HORAS TRABALHADAS - dynamic field, shown when machine selected
       "<div class=\"form-field\" id=\"lanc_horas_wrap\" style=\"display:"+maqDisplay+";grid-column:span 2;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px;margin-bottom:4px\">"+
       "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:12px\">"+
@@ -341,6 +345,24 @@ window.module_lancamentos = async function() {
           : await sb.from("lancamentos").update(payload).eq("id", l.id);
         if(error) { toast("Erro: "+error.message,"bad"); return; }
         toast(isNovo ? "Lan\u00E7amento registrado!" : "Lan\u00E7amento atualizado!","ok");
+        // Marcar ativo como vendido se categoria for Venda de Ativos
+        if (isNovo) {
+          var catElNow = document.getElementById("lanc_cat");
+          var ativoElNow = document.getElementById("lanc_ativo");
+          var catNomeNow = "";
+          if (catElNow && window._lancCategorias) {
+            var catObjNow = window._lancCategorias.find(function(co){return co.id === catElNow.value;});
+            catNomeNow = catObjNow ? catObjNow.nome : "";
+          }
+          if (catNomeNow === "Venda de Ativos" && ativoElNow && ativoElNow.value) {
+            var ativoIdNow = ativoElNow.value;
+            var ativoDataNow = (window._lancAtivos||[]).find(function(a){return a.id === ativoIdNow;});
+            await sb.from("ativos").update({ status: "vendido", vendido_em: data, valor_venda: custo }).eq("id", ativoIdNow);
+            if (ativoDataNow) {
+              toast("\u{1F4B0} Ativo \"" + ativoDataNow.nome + "\" marcado como vendido!", "ok");
+            }
+          }
+        }
 
                 // Atualiza horimetro e registra depreciação da maquina
         if (maqId && qtd > 0 && unid === 'h' && isNovo) {
@@ -612,6 +634,21 @@ window.module_lancamentos = async function() {
       var catEl3 = document.getElementById('lanc_cat');
       var catN3 = catEl3 && catEl3.selectedIndex>=0 ? catEl3.options[catEl3.selectedIndex].text : '';
       _insSel3.innerHTML = '<option value="">Nenhum</option>' + window._buildInsumoOpts(window._lancInsumos, false, catN3);
+    }
+    // Venda de Ativos: mostrar select de ativos
+    var ativoWrap = document.getElementById("lanc_ativo_wrap");
+    if (ativoWrap) {
+      if (nomeCat === "Venda de Ativos") {
+        var fazIdNow = (document.getElementById("lanc_faz")||{}).value;
+        var ativoSel = document.getElementById("lanc_ativo");
+        if (ativoSel && window._lancAtivos) {
+          var ativosFiltered = window._lancAtivos.filter(function(a){ return !fazIdNow || a.fazenda_id === fazIdNow; });
+          ativoSel.innerHTML = "<option value=\"\">Selecione...</option>" + ativosFiltered.map(function(a){ return "<option value=\""+a.id+"\">"+a.nome+(a.valor_aquisicao?" (R$ "+a.valor_aquisicao+")":"")+"</option>"; }).join("");
+        }
+        ativoWrap.style.display = "";
+      } else {
+        ativoWrap.style.display = "none";
+      }
     }
   };
   window._lanc_del = function(btn){

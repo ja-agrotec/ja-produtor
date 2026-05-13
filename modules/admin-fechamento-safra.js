@@ -289,7 +289,7 @@ window.module_fechamento_safra = async function(){
     html += '<div style="max-width:1100px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.3);">';
     html += '<div style="padding:18px 24px;background:linear-gradient(135deg,#1e7e34,#2e7d32);color:#fff;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">';
     html += '<div><div style="font-size:11px;opacity:.85;letter-spacing:.5px;">RELATORIO DE FECHAMENTO</div><h2 style="margin:4px 0;font-size:22px;">'+esc(f.safras&&f.safras.nome||"-")+'</h2><div style="font-size:13px;opacity:.95;">'+esc(f.safras&&f.safras.fazendas&&f.safras.fazendas.nome||"-")+' &middot; '+esc(f.safras&&f.safras.cultura||"-")+' &middot; '+fmtDate(f.data_fechamento)+' &middot; '+statusBadge(f.status)+'</div></div>';
-    html += '<div style="display:flex;gap:8px;"><button id="fsPrint" style="padding:8px 14px;background:#fff;color:#1e7e34;border:none;border-radius:6px;font-weight:700;cursor:pointer;">&#128424; Imprimir</button><button id="fsClose" style="padding:8px 14px;background:rgba(255,255,255,.2);color:#fff;border:1px solid #fff;border-radius:6px;font-weight:700;cursor:pointer;">Fechar &times;</button></div>';
+    html += '<div style="display:flex;gap:8px;"><button id="fsPrint" style="padding:8px 14px;background:#fff;color:#1e7e34;border:none;border-radius:6px;font-weight:700;cursor:pointer;">&#128196; Baixar PDF</button><button id="fsClose" style="padding:8px 14px;background:rgba(255,255,255,.2);color:#fff;border:1px solid #fff;border-radius:6px;font-weight:700;cursor:pointer;">Fechar &times;</button></div>';
     html += '</div>';
 
     html += '<div id="fsPrintArea" style="padding:24px;">';
@@ -384,12 +384,7 @@ window.module_fechamento_safra = async function(){
 
     document.getElementById("fsClose").addEventListener("click", function(){ var m=document.getElementById("fsModal"); if(m) m.remove(); });
     document.getElementById("fsModal").addEventListener("click", function(e){ if(e.target.id==="fsModal") e.target.remove(); });
-    document.getElementById("fsPrint").addEventListener("click", function(){
-      var w = window.open("","_blank");
-      var content = document.getElementById("fsPrintArea").innerHTML;
-      w.document.write('<html><head><title>Relatorio - '+esc(f.safras&&f.safras.nome||"")+'</title><style>body{font-family:Arial,sans-serif;padding:20px;color:#333;}h1,h2,h3{color:#1e7e34;}table{width:100%;border-collapse:collapse;}th,td{padding:6px;border-bottom:1px solid #ddd;font-size:12px;text-align:left;}canvas{display:none;}</style></head><body><h1>Relatorio de Fechamento - '+esc(f.safras&&f.safras.nome||"")+'</h1>'+content+'</body></html>');
-      w.document.close(); setTimeout(function(){ w.print(); }, 300);
-    });
+    document.getElementById("fsPrint").addEventListener("click", function(){ if(typeof window._fsGerarPdf==="function"){ window._fsGerarPdf(f.id); } else { alert("Funcao de PDF nao disponivel."); } });
 
     setTimeout(function(){
       try{

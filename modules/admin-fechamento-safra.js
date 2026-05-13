@@ -1,6 +1,6 @@
 window.module_fechamento_safra = async function(){
-  var root = document.getElementById("moduleArea") || document.getElementById("conteudo") || document.querySelector(".main-content") || document.body;
-  if(!window.sb){ root.innerHTML = "<p style=padding:20px>Conexao com banco de dados nao inicializada.</p>"; return; }
+  var root = document.getElementById("mainContent") || document.getElementById("moduleArea") || document.getElementById("conteudo") || document.querySelector(".main-content") || document.body;
+  if(typeof sb === "undefined"){ root.innerHTML = "<p style=padding:20px>Conexao com banco de dados nao inicializada.</p>"; return; }
 
   function fmtBrl(n){ return "R$ " + parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2}); }
   function fmtBrlK(n){ var v=parseFloat(n||0); if(Math.abs(v)>=1e6) return "R$ "+(v/1e6).toFixed(2)+"M"; if(Math.abs(v)>=1e3) return "R$ "+(v/1e3).toFixed(1)+"k"; return fmtBrl(v); }

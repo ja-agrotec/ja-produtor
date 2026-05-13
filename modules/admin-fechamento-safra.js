@@ -1143,7 +1143,7 @@ window._legacyFechamentoCreate = async function() {
     var res = await sb.from("fechamento_safra").update({status:"confirmado"}).eq("id",fechId);
     if (res.error) { alert("Erro: "+res.error.message); return; }
     alert("Fechamento confirmado com sucesso!");
-    window._legacyFechamentoCreate();
+// removed auto-call
   };
 
   // View existing fechamento detail
@@ -1172,8 +1172,8 @@ window._legacyFechamentoCreate = async function() {
     var { error: err2 } = await sb.from("fechamento_safra").delete().eq("id", id);
     if(err2) { alert("Erro ao excluir fechamento: "+err2.message); return; }
     toast("Rascunho exclu\u00EDdo com sucesso","ok");
-    await window._legacyFechamentoCreate();
+// removed auto-call
   };
 
 }; // end module_fechamento_safra
-window._legacyFechamentoCreate();
+// removed auto-call

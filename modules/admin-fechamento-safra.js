@@ -660,9 +660,18 @@ window._legacyFechamentoCreate = async function() {
     if (!safraId) { document.getElementById("fsTalhoesWrap").style.display="none"; return; }
     var safra = safras.find(function(s){ return s.id===safraId; });
     if (!safra) return;
-    // Load talhoes of the same fazenda
+    // Load talhoes of the same fazenda (filtrando os ja fechados)
     var tRes = await sb.from("talhoes").select("id,nome,area_ha").eq("fazenda_id",safra.fazenda_id).eq("ativo",true);
     var tals = (tRes.data || []);
+    var ftRes = await sb.from("fechamento_talhao").select("talhao_id,status_talhao").eq("safra_id",safraId);
+    var fechadosIds = {};
+    (ftRes.data||[]).forEach(function(ft){ if(ft.status_talhao && /fechado/i.test(ft.status_talhao)) fechadosIds[ft.talhao_id]=ft.status_talhao; });
+    var totalAntes = tals.length;
+    tals = tals.filter(function(t){ return !fechadosIds[t.id]; });
+    if(totalAntes>tals.length){
+      var avisoHtml = "<div style=\"background:#fff3e0;border-left:3px solid #f57c00;padding:8px 12px;border-radius:6px;margin-bottom:10px;font-size:12px;color:#e65100\">&#9888; " + (totalAntes-tals.length) + " talhao(oes) ja fechado(s) nao aparece(m) na lista.</div>";
+      var holder = document.getElementById("fsTalhaoList"); if(holder) holder.insertAdjacentHTML("beforebegin", avisoHtml);
+    }
     var listHtml = "";
     tals.forEach(function(t) {
       listHtml += "<label style=\"display:flex;align-items:center;gap:8px;padding:8px 12px;background:#f9f9f9;border-radius:6px;margin-bottom:6px;cursor:pointer;font-size:13px\">"
@@ -1034,11 +1043,15 @@ window._legacyFechamentoCreate = async function() {
     html += "</div>"
     html += "</div>"
 
-    // Action buttons
+    // Documentos placeholder (sera preenchido async abaixo)
+    html += "<div id=\"fsDocsHolder\" style=\"margin-bottom:16px\"></div>"
+    
+    // Action buttons (Confirmar fica por ultimo)
     html += "<div style=\"display:flex;gap:10px;margin-bottom:20px\">"
-    html += "<button onclick=\"window._fsConfirmar('"+fechId+"');\" style=\"background:#2d7d32;color:#fff;border:none;border-radius:8px;padding:12px 28px;cursor:pointer;font-size:14px;font-weight:600\">&#10003; Confirmar Fechamento</button>"
-    html += "<button onclick=\"window.print();\" style=\"background:#1565c0;color:#fff;border:none;border-radius:8px;padding:12px 28px;cursor:pointer;font-size:14px;font-weight:600\">&#128424; Imprimir Relatorio</button>"
-    html += "<button onclick=\"window._legacyFechamentoCreate();\" style=\"background:#eee;color:#333;border:none;border-radius:8px;padding:12px 24px;cursor:pointer;font-size:14px\">Voltar</button>"
+    html += "<button onclick=\"window._legacyFechamentoCreate();\" style=\"background:#eee;color:#333;border:none;border-radius:8px;padding:12px 24px;cursor:pointer;font-size:14px\">&larr; Voltar</button>"
+    html += "<button onclick=\"window._fsGerarPdf('"+fechId+"');\" style=\"background:#1565c0;color:#fff;border:none;border-radius:8px;padding:12px 28px;cursor:pointer;font-size:14px;font-weight:600\">&#128196; Baixar PDF</button>"
+    html += "<div style=\"flex:1\"></div>"
+    html += "<button onclick=\"window._fsConfirmar('"+fechId+"');\" style=\"background:#2d7d32;color:#fff;border:none;border-radius:8px;padding:12px 28px;cursor:pointer;font-size:14px;font-weight:700;box-shadow:0 2px 6px rgba(45,125,50,.3)\">&#10003; Confirmar Fechamento</button>"
     html += "</div>"
 
     html += "</div>"
@@ -1144,17 +1157,208 @@ window._legacyFechamentoCreate = async function() {
         const _safLbl = safra ? ((safra.cultura || '') + ' ' + (safra.ano_agricola || '')).trim() : fechId.slice(0,8);
         _dHtml += '<button onclick="if(window.AdminDocumentos){window.AdminDocumentos.abrirUpload(\'fechamento\',\'' + fechId + '\',\'Fechamento: ' + ' + _safLbl + ' + '\')}" style="margin-top:8px;background:rgba(45,125,50,.15);border:1px solid rgba(45,125,50,.3);color:#2d7d32;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600">📁 + Anexar Documento</button>';
         _dHtml += '</div>';
-        if (c) c.insertAdjacentHTML('beforeend', _dHtml);
+        var _holder=document.getElementById('fsDocsHolder'); if(_holder){_holder.innerHTML=_dHtml;} else if(c){c.insertAdjacentHTML('beforeend', _dHtml);}
       } catch(_e) { console.warn('Docs fechamento:', _e); }
     })();
   };
 
-  // Confirm fechamento
+  // Confirm fechamento - atualiza fechamento, talhoes e safra
   window._fsConfirmar = async function(fechId) {
-    var res = await sb.from("fechamento_safra").update({status:"confirmado"}).eq("id",fechId);
-    if (res.error) { alert("Erro: "+res.error.message); return; }
-    alert("Fechamento confirmado com sucesso!");
+    if(!confirm("Confirmar este fechamento? Apos confirmacao, os talhoes selecionados serao bloqueados para novos lancamentos.")) return;
+    var btn = event && event.target; if(btn){ btn.disabled=true; btn.innerText="Confirmando..."; }
+    var fRes = await sb.from("fechamento_safra").select("*,fechamento_talhao(id,talhao_id)").eq("id",fechId).single();
+    if(fRes.error){ alert("Erro: "+fRes.error.message); return; }
+    var fech = fRes.data;
+    var tipoFech = fech.tipo_fechamento || "parcial";
+    var statusTalhao = tipoFech==="total" ? "fechado_total" : "fechado_parcial";
+    var r1 = await sb.from("fechamento_safra").update({status:"confirmado"}).eq("id",fechId);
+    if(r1.error){ alert("Erro: "+r1.error.message); return; }
+    var r2 = await sb.from("fechamento_talhao").update({status_talhao:statusTalhao}).eq("fechamento_id",fechId);
+    if(r2.error){ console.warn("status_talhao:",r2.error.message); }
+    if(tipoFech==="total"){
+      var r3 = await sb.from("safras").update({status:"encerrada"}).eq("id",fech.safra_id);
+      if(r3.error){ console.warn("safra status:",r3.error.message); }
+    }
+    alert("Fechamento confirmado com sucesso!\n\n" + (tipoFech==="total" ? "Safra ENCERRADA. Nenhum lancamento adicional sera permitido." : "Talhoes marcados como FECHADO_PARCIAL. Esses talhoes nao aceitam mais lancamentos."));
+    if(typeof window.module_fechamento_safra==="function") window.module_fechamento_safra();
 // removed auto-call
+
+  window._fsEnsurePdf = async function(){
+    if(window.jspdf && window.jspdf.jsPDF) return true;
+    await new Promise((res,rej)=>{var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    await new Promise((res,rej)=>{var s=document.createElement("script");s.src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.0/jspdf.plugin.autotable.min.js";s.onload=res;s.onerror=rej;document.head.appendChild(s);});
+    return !!(window.jspdf && window.jspdf.jsPDF);
+  };
+  
+  window._fsGerarPdf = async function(fechId){
+    try {
+      var btn = event && event.target; var oldT=""; if(btn){ btn.disabled=true; oldT=btn.innerText; btn.innerText="Gerando PDF..."; }
+      await window._fsEnsurePdf();
+      var fRes = await sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola,data_plantio,data_colheita),fazendas(nome,cidade,estado),fechamento_talhao(*,talhoes(nome))").eq("id",fechId).single();
+      if(fRes.error) throw fRes.error;
+      var f = fRes.data;
+      var vRes = await sb.from("vendas_graos").select("*").eq("safra_id",f.safra_id).in("status",["confirmado","entregue","faturado"]);
+      var vendas = vRes.data || [];
+      
+      var jsPDF = window.jspdf.jsPDF;
+      var doc = new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+      var W = doc.internal.pageSize.getWidth();
+      var H = doc.internal.pageSize.getHeight();
+      var MARGIN = 14;
+      var y = MARGIN;
+      
+      doc.setFillColor(45,125,50);
+      doc.rect(0,0,W,32,"F");
+      doc.setTextColor(255,255,255);
+      doc.setFont("helvetica","bold");
+      doc.setFontSize(18);
+      doc.text("RELATORIO DE FECHAMENTO DE SAFRA", MARGIN, 14);
+      doc.setFontSize(10);
+      doc.setFont("helvetica","normal");
+      doc.text("JA Agro Intelligence - Sistema de Gestao Agricola", MARGIN, 21);
+      doc.text("Emitido em: " + new Date().toLocaleString("pt-BR"), MARGIN, 27);
+      y = 40;
+      
+      doc.setTextColor(30,30,30);
+      doc.setFont("helvetica","bold"); doc.setFontSize(13);
+      doc.text((f.safras && f.safras.nome) || "Safra", MARGIN, y); y+=6;
+      doc.setFont("helvetica","normal"); doc.setFontSize(10); doc.setTextColor(100,100,100);
+      doc.text((((f.safras && f.safras.cultura) || "") + " " + ((f.safras && f.safras.ano_agricola) || "")).trim(), MARGIN, y); y+=5;
+      doc.text(((f.fazendas && f.fazendas.nome) || "") + " - " + ((f.fazendas && f.fazendas.cidade) || "") + "/" + ((f.fazendas && f.fazendas.estado) || ""), MARGIN, y); y+=5;
+      doc.text("Tipo: " + (f.tipo_fechamento==="total"?"Total (safra inteira)":"Parcial (alguns talhoes)") + " | Data: " + new Date(f.data_fechamento).toLocaleDateString("pt-BR") + " | Status: " + (f.status||"-").toUpperCase(), MARGIN, y);
+      y += 10;
+      
+      var fmtBR = function(n){return "R$ " + parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});};
+      var fmtN = function(n,d){return parseFloat(n||0).toLocaleString("pt-BR",{minimumFractionDigits:d||0,maximumFractionDigits:d||1});};
+      var kpis = [
+        ["Area Total", fmtN(f.area_total_ha,2) + " ha"],
+        ["Producao", fmtN(f.producao_total_sc,1) + " sc"],
+        ["Produtividade", fmtN(f.produtividade_sc_ha,1) + " sc/ha"],
+        ["Custo Total", fmtBR(f.custo_total)],
+        ["Custo/sc", fmtBR(f.custo_sc)],
+        ["Custo/ha", fmtBR(f.custo_ha)],
+        ["Receita", fmtBR(f.receita_vendas)],
+        ["Resultado", fmtBR(f.resultado_liquido)],
+        ["Margem", fmtN(f.margem_pct,1) + " %"]
+      ];
+      var cardW = (W - 2*MARGIN - 16)/3, cardH = 18;
+      kpis.forEach(function(kp,i){
+        var col = i%3, row = Math.floor(i/3);
+        var x = MARGIN + col*(cardW+8);
+        var cy = y + row*(cardH+4);
+        doc.setFillColor(245,248,245); doc.setDrawColor(45,125,50);
+        doc.roundedRect(x,cy,cardW,cardH,2,2,"FD");
+        doc.setTextColor(100,100,100); doc.setFont("helvetica","normal"); doc.setFontSize(8);
+        doc.text(kp[0].toUpperCase(), x+3, cy+5);
+        doc.setTextColor(45,125,50); doc.setFont("helvetica","bold"); doc.setFontSize(11);
+        doc.text(kp[1], x+3, cy+13);
+      });
+      y += Math.ceil(kpis.length/3)*(cardH+4) + 6;
+      
+      doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(30,30,30);
+      doc.text("DETALHAMENTO DE CUSTOS", MARGIN, y); y+=2;
+      doc.autoTable({
+        startY: y+2,
+        head: [["Categoria","Valor (R$)","% do total"]],
+        body: [
+          ["Insumos", fmtBR(f.custo_insumos), fmtN(f.custo_total?(f.custo_insumos/f.custo_total*100):0,1)+"%"],
+          ["Mao de Obra", fmtBR(f.custo_mao_obra), fmtN(f.custo_total?(f.custo_mao_obra/f.custo_total*100):0,1)+"%"],
+          ["Maquinas", fmtBR(f.custo_maquinas), fmtN(f.custo_total?(f.custo_maquinas/f.custo_total*100):0,1)+"%"],
+          ["Depreciacao", fmtBR(f.custo_depreciacao), fmtN(f.custo_total?(f.custo_depreciacao/f.custo_total*100):0,1)+"%"],
+          ["Outros", fmtBR(f.custo_outros), fmtN(f.custo_total?(f.custo_outros/f.custo_total*100):0,1)+"%"]
+        ],
+        foot: [["TOTAL", fmtBR(f.custo_total), "100,0%"]],
+        theme:"grid",
+        headStyles:{fillColor:[45,125,50],textColor:255,fontStyle:"bold",fontSize:9},
+        footStyles:{fillColor:[230,240,230],textColor:[30,30,30],fontStyle:"bold"},
+        styles:{fontSize:9,cellPadding:2},
+        margin:{left:MARGIN,right:MARGIN}
+      });
+      y = doc.lastAutoTable.finalY + 8;
+      
+      if(y > H-50){ doc.addPage(); y = MARGIN; }
+      doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(30,30,30);
+      doc.text("DETALHAMENTO POR TALHAO", MARGIN, y);
+      var talhoes = (f.fechamento_talhao || []).map(function(t){
+        return [
+          (t.talhoes && t.talhoes.nome) || "-",
+          fmtN(t.area_ha,2),
+          fmtN(t.producao_sc,1),
+          fmtN(t.produtividade_sc_ha,1),
+          fmtBR(t.custo_total),
+          fmtBR(t.custo_sc),
+          fmtBR(t.receita_proporcional),
+          fmtBR(t.resultado_liquido),
+          (t.status_talhao||"-").toUpperCase()
+        ];
+      });
+      doc.autoTable({
+        startY: y+2,
+        head: [["Talhao","Area (ha)","Producao (sc)","Prod (sc/ha)","Custo Total","Custo/sc","Receita","Resultado","Status"]],
+        body: talhoes,
+        theme:"grid",
+        headStyles:{fillColor:[45,125,50],textColor:255,fontStyle:"bold",fontSize:8},
+        styles:{fontSize:8,cellPadding:1.5},
+        margin:{left:MARGIN,right:MARGIN}
+      });
+      y = doc.lastAutoTable.finalY + 8;
+      
+      if(vendas.length){
+        if(y > H-50){ doc.addPage(); y = MARGIN; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.setTextColor(30,30,30);
+        doc.text("VENDAS DA SAFRA", MARGIN, y);
+        doc.autoTable({
+          startY: y+2,
+          head: [["Data","Cultura","Quantidade (sc)","Preco (R$/sc)","Total (R$)","Status"]],
+          body: vendas.map(function(v){return [
+            v.data_venda?new Date(v.data_venda).toLocaleDateString("pt-BR"):"-",
+            v.cultura||"-",
+            fmtN(v.quantidade_sc,1),
+            fmtBR(v.preco_saca),
+            fmtBR((v.quantidade_sc||0)*(v.preco_saca||0)),
+            (v.status||"-").toUpperCase()
+          ];}),
+          theme:"striped",
+          headStyles:{fillColor:[45,125,50],textColor:255,fontStyle:"bold",fontSize:8},
+          styles:{fontSize:8,cellPadding:1.5},
+          margin:{left:MARGIN,right:MARGIN}
+        });
+        y = doc.lastAutoTable.finalY + 8;
+      }
+      
+      if(f.observacoes){
+        if(y > H-30){ doc.addPage(); y = MARGIN; }
+        doc.setFont("helvetica","bold"); doc.setFontSize(11);
+        doc.text("OBSERVACOES", MARGIN, y); y+=5;
+        doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(60,60,60);
+        var obsLines = doc.splitTextToSize(f.observacoes, W-2*MARGIN);
+        doc.text(obsLines, MARGIN, y);
+        y += obsLines.length*4 + 6;
+      }
+      
+      var pages = doc.internal.getNumberOfPages();
+      for(var p=1; p<=pages; p++){
+        doc.setPage(p);
+        doc.setDrawColor(45,125,50);
+        doc.setLineWidth(0.3);
+        doc.line(MARGIN, H-12, W-MARGIN, H-12);
+        doc.setFont("helvetica","normal"); doc.setFontSize(8); doc.setTextColor(120,120,120);
+        doc.text("JA Agro Intelligence - Relatorio gerado automaticamente", MARGIN, H-7);
+        doc.text("Pagina " + p + " de " + pages, W-MARGIN, H-7, {align:"right"});
+      }
+      
+      var safeNome = ((f.safras && f.safras.nome) || "Fechamento").replace(/[^a-zA-Z0-9_-]/g,"_");
+      var fname = "Fechamento_" + safeNome + "_" + new Date().toISOString().slice(0,10) + ".pdf";
+      doc.save(fname);
+      
+      if(btn){ btn.disabled=false; btn.innerText=oldT; }
+    } catch(e){
+      console.error("PDF error:",e);
+      alert("Erro ao gerar PDF: " + e.message);
+    }
+  };
+
+
   };
 
   // View existing fechamento detail

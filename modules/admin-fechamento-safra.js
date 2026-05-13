@@ -560,7 +560,7 @@ window._legacyFechamentoCreate = async function() {
     return badge(st,"#f5f5f5","#666");
   }
 
-  var safOpts = safras.map(function(s) {
+  var safOpts = safras.filter(function(s){return (s.status||"").toLowerCase()==="aberta";}).map(function(s) {
     var fzNome = s.fazendas ? s.fazendas.nome : "";
     return "<option value=\""+s.id+"\">"+s.nome+" - "+fzNome+" ("+(s.cultura||"")+" "+(s.ano_agricola||"")+")</option>";
   }).join("");

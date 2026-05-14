@@ -22,7 +22,7 @@ window.module_dashboard = async function() {
     sb.from("talhoes").select("id,nome,area_ha,fazenda_id").eq("ativo",true),
     sb.from("insumos").select("id,nome,estoque_atual,estoque_minimo,preco_unitario").eq("ativo",true),
     sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola),fazendas(nome)").order("criado_em",{ascending:false}).limit(10),
-    sb.from("vendas_grãos").select("*").order("criado_em",{ascending:false}).limit(50)
+    sb.from("vendas_graos").select("*").order("criado_em",{ascending:false}).limit(50)
   ]);
 
   var fazendas = (fazRes.data || []);
@@ -44,7 +44,7 @@ window.module_dashboard = async function() {
   // Filtrar dados pela fazenda selecionada
   if(_dashFazSel && _dashFazSel !== 'todas'){
     safras = safras.filter(function(s){ return s.fazenda_id === _dashFazSel; });
-    insumos = insumos.filter(function(i){ return i.fazenda_id === _dashFazSel; });
+    insumos = insumos.filter(function(i){ return i.global === true || !i.fazenda_id || i.fazenda_id === _dashFazSel; });
     fechamentos = fechamentos.filter(function(f){ return f.fazenda_id === _dashFazSel; });
     vendas = vendas.filter(function(v){ return v.fazenda_id === _dashFazSel; });
     lancs = lancs.filter(function(l){ return l.fazenda_id === _dashFazSel; });
@@ -92,7 +92,7 @@ window.module_dashboard = async function() {
     sb.from("talhoes").select("id,nome,area_ha,fazenda_id").eq("ativo",true),
     sb.from("insumos").select("id,nome,estoque_atual,estoque_minimo,preco_unitario").eq("ativo",true),
     sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola),fazendas(nome)").order("criado_em",{ascending:false}).limit(10),
-    sb.from("vendas_grãos").select("*").order("criado_em",{ascending:false}).limit(50)
+    sb.from("vendas_graos").select("*").order("criado_em",{ascending:false}).limit(50)
   ]);
 
   var fazendas = (fazRes.data || []);
@@ -114,7 +114,7 @@ window.module_dashboard = async function() {
   // Filtrar dados pela fazenda selecionada
   if(_dashFazSel && _dashFazSel !== 'todas'){
     safras = safras.filter(function(s){ return s.fazenda_id === _dashFazSel; });
-    insumos = insumos.filter(function(i){ return i.fazenda_id === _dashFazSel; });
+    insumos = insumos.filter(function(i){ return i.global === true || !i.fazenda_id || i.fazenda_id === _dashFazSel; });
     fechamentos = fechamentos.filter(function(f){ return f.fazenda_id === _dashFazSel; });
     vendas = vendas.filter(function(v){ return v.fazenda_id === _dashFazSel; });
     lancs = lancs.filter(function(l){ return l.fazenda_id === _dashFazSel; });

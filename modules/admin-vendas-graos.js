@@ -9,7 +9,7 @@ window.module_vendas_graos = async function() {
   var safras = (sRes.data || []);
   var vRes = await sb.from("vendas_graos").select("*,fazendas(nome,certificada,tipo_certificacao),safras(nome,cultura)").order("criado_em",{ascending:false});
   var vendas = (vRes.data || []);
-  var eRes = await sb.from("entregas_grãos").select("*,vendas_graos(cultura,tipo_contrato),talhoes(nome)");
+  var eRes = await sb.from("entregas_graos").select("*,vendas_graos(cultura,tipo_contrato),talhoes(nome)");
   var entregas = (eRes.data || []);
   var qRes = await sb.from("qualidade_registro").select("id,fazenda_id,safra_id,cultura,data_registro,fazendas(nome)").order("data_registro",{ascending:false});
   var qualidades = (qRes.data || []);
@@ -585,7 +585,7 @@ window.module_vendas_graos = async function() {
     if (!qtd || qtd <= 0) { alert("Informe a quantidade de sacas."); return; }
     if (!data) { alert("Informe a data de entrega."); return; }
     try {
-      var res = await sb.from("entregas_grãos").insert({ venda_id: vendaId, quantidade_sc: qtd, data_entrega: data, nota_fiscal: nf, observacoes: obs });
+      var res = await sb.from("entregas_graos").insert({ venda_id: vendaId, quantidade_sc: qtd, data_entrega: data, nota_fiscal: nf, observacoes: obs });
       if (res.error) throw res.error;
       // Atualizar status do contrato
       var v = (window._vgAllVendas||[]).find(function(x){ return x.id===vendaId; });

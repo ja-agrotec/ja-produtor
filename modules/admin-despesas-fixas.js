@@ -6,7 +6,7 @@ window.module_despesas_fixas = async function() {
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const fmtBR = n => 'R$ '+(parseFloat(n||0)).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 
-  const CATEGORIAS = ['Internet','Telefone','Energia','Agua','Contador','Funcionario Fixo','Aluguel','Seguro','Software/Sistema','Imposto','Manutencao Predial','Outros'];
+  const CATEGORIAS = ['Internet','Telefone','Energia','Agua','Contador','Funcionario Fixo','Aluguel','Seguro','Software/Sistema','Imposto','Manutencao Predial','Arrendamento','Tributos','Certificacao','Outros'];
   const PERIODICIDADES = [
     {v:'mensal', l:'Mensal', meses:1},
     {v:'bimestral', l:'Bimestral', meses:2},
@@ -103,7 +103,16 @@ window.module_despesas_fixas = async function() {
     var fazOpts = '<option value="">(Todas as fazendas)</option>'+_fazendas.map(function(f){
       return '<option value="'+f.id+'"'+(item.fazenda_id===f.id?' selected':'')+'>'+esc(f.nome)+'</option>';
     }).join('');
-    var catOpts = CATEGORIAS.map(function(c){ return '<option'+(item.categoria===c?' selected':'')+'>'+esc(c)+'</option>'; }).join('');
+    var catAtual = (item.categoria||'').toString();
+    var catNorm = catAtual.toLowerCase();
+    var matchExato = CATEGORIAS.find(function(c){ return c.toLowerCase()===catNorm; });
+    var catOpts = CATEGORIAS.map(function(c){
+      var sel = (matchExato && matchExato===c) ? ' selected' : '';
+      return '<option value="'+esc(c)+'"'+sel+'>'+esc(c)+'</option>';
+    }).join('');
+    if(!matchExato && catAtual){
+      catOpts = '<option value="'+esc(catAtual)+'" selected>'+esc(catAtual)+' (atual)</option>'+catOpts;
+    }
     var perOpts = PERIODICIDADES.map(function(p){ return '<option value="'+p.v+'"'+(item.periodicidade===p.v?' selected':'')+'>'+esc(p.l)+'</option>'; }).join('');
 
     var html = '<div class="modal-overlay" id="dfModal" style="position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000">'+

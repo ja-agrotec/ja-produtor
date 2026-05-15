@@ -260,14 +260,14 @@ var AdminCertificação = AdminCertificação || (() => {
     if (!fazendas.length) return '<div class="cert-empty"><span>🏡</span><p>Nenhuma fazenda cadastrada.<br>Cadastre uma fazenda primeiro.</p></div>';
     return `<div class="cert-fazenda-grid">${fazendas.map(f => `
       <div class="cert-fazenda-card ${f.certificada ? 'is-cert' : ''}" onclick="AdminCertificação.openFazenda('${f.id}')">
-        <div class="cert-fazenda-icon">${f.certificada ? (CHECKLISTS[f.tipo_certificacao]?.icon || 'â') : '🏡'}</div>
+        <div class="cert-fazenda-icon">${f.certificada ? (CHECKLISTS[f.tipo_certificacao]?.icon || '✅') : '🏡'}</div>
         <div class="cert-fazenda-info">
           <div class="cert-fazenda-nome">${f.nome}</div>
           <div class="cert-fazenda-status">${f.certificada
             ? `<span class="cert-tag cert-active">${CHECKLISTS[f.tipo_certificacao]?.nome || f.tipo_certificacao}</span>`
             : '<span class="cert-tag cert-none">Sem certificação</span>'}</div>
         </div>
-        <div class="cert-fazenda-arrow">âº</div>
+        <div class="cert-fazenda-arrow">›</div>
       </div>
     `).join('')}</div>`;
   }
@@ -275,7 +275,7 @@ var AdminCertificação = AdminCertificação || (() => {
   function renderCertTypeSelector(fazenda) {
     return `
     <div class="cert-type-header">
-      <button class="cert-back-btn" onclick="AdminCertificação.backToList()">â¹ Fazendas</button>
+      <button class="cert-back-btn" onclick="AdminCertificação.backToList()">‹ Fazendas</button>
       <h3 class="cert-farm-title">${fazenda.nome}</h3>
     </div>
     <div class="cert-config-section">

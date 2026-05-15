@@ -1,6 +1,9 @@
 window.module_insumos = async function(){
   const el = document.getElementById('mainContent');
   if(!el) return;
+  // Deep link de Alertas: filtra/destaca insumo especifico
+  let _alertaTargetInsumo='';
+  try{ var _at=sessionStorage.getItem('alertaTarget_insumos'); if(_at){ _alertaTargetInsumo=_at; sessionStorage.removeItem('alertaTarget_insumos'); } }catch(e){}
   let _ins=[],_fazs=[],_precs={},_filtFaz='',_filtBusca='',_filtCult='',_filtCat='';
   const esc=v=>v?String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'):'';
   const fmt=v=>(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
@@ -375,4 +378,17 @@ window.module_insumos = async function(){
 
   el.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:200px;color:#6b7280">Carregando insumos...</div>';
   await loadData();
+  // Aplica filtro pelo nome se veio de Alertas com deep link de insumo
+  if(_alertaTargetInsumo){
+    setTimeout(function(){
+      try{
+        var ins=(_ins||[]).find(function(x){return x.id===_alertaTargetInsumo;});
+        if(ins && ins.nome){
+          var inps=document.querySelectorAll('input[placeholder*="nome" i], input[placeholder*="buscar" i]');
+          if(inps && inps.length){ inps[0].value=ins.nome; inps[0].dispatchEvent(new Event('input',{bubbles:true})); }
+          if(window._ins_setBusca) window._ins_setBusca(ins.nome);
+        }
+      }catch(e){}
+    },400);
+  }
 };

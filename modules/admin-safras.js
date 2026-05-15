@@ -78,7 +78,7 @@ window.module_safras = async function(){
           kpiCard("Em Andamento",    k.abertas, "#16a34a", "#dcfce7", "🌱")+
           kpiCard("Em Planejamento", k.plan, "#a16207", "#fef3c7", "📝")+
           kpiCard("Encerradas",      k.encerradas, "#6b7280", "#e5e7eb", "✅")+
-          kpiCard("Area Total",      fmtN(k.area,0)+" ha", "#1d4ed8", "#dbeafe", "📐")+
+          kpiCard("Area Plantada",   fmtN(k.area,0)+" ha (soma das safras)", "#1d4ed8", "#dbeafe", "📐")+
         '</div>'+
         '<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;background:#fff;padding:12px 14px;border:1px solid #e5e7eb;border-radius:12px">'+
           '<input id="safSearch" type="text" placeholder="🔍 Buscar safra, cultura ou fazenda..." value="'+esc(_search)+'" '+

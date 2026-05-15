@@ -25,7 +25,7 @@ window.module_home = async function() {
     sb.from("lancamentos").select("id,tipo,custo_total,data_lancamento,descricao,status").eq("status","confirmado").order("data_lancamento",{ascending:false}).limit(8),
     sb.from("insumos").select("id,nome,estoque_atual,estoque_minimo").eq("ativo",true),
     sb.from("fechamento_safra").select("*,safras(nome,cultura,ano_agricola),fazendas(nome)").order("criado_em",{ascending:false}).limit(5),
-    sb.from("vendas_grãos").select("id,quantidade_sc,preco_saca,status,cultura,safra_id,fazenda_id").order("criado_em",{ascending:false}).limit(20)
+    sb.from("vendas_graos").select("id,quantidade_sc,preco_saca,status,cultura,safra_id,fazenda_id").order("criado_em",{ascending:false}).limit(20)
   ]);
 
   var fazendas = (fazRes.data || []);
@@ -246,13 +246,13 @@ var html = "";
   html += "<div style=\"background:#fff;border-radius:12px;box-shadow:0 1px 4px rgba(0,0,0,0.08);overflow:hidden\">"
   html += "<div style=\"padding:14px 16px;border-bottom:1px solid #f5f5f5;display:flex;justify-content:space-between;align-items:center\">"
   html += "<h3 style=\"margin:0;font-size:14px;color:#333\">&#127807; Vendas</h3>"
-  html += "<a href=\"#\" onclick=\"event.preventDefault();document.querySelector('[data-module=vendas-grãos]').click();\" style=\"font-size:12px;color:#2d7d32;text-decoration:none\">Gerenciar &rarr;</a>"
+  html += "<a href=\"#\" onclick=\"event.preventDefault();document.querySelector('[data-module=vendas-graos]').click();\" style=\"font-size:12px;color:#2d7d32;text-decoration:none\">Gerenciar &rarr;</a>"
   html += "</div>"
   if (vendas.length === 0) {
     html += "<div style=\"padding:32px;text-align:center;color:#bbb\">"
     html += "<div style=\"font-size:32px;margin-bottom:8px\">&#127807;</div>"
     html += "<div style=\"font-size:13px\">Nenhum contrato de venda</div>"
-    html += "<button onclick=\"document.querySelector('[data-module=vendas-grãos]').click();\" style=\"margin-top:12px;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:12px\">Cadastrar Venda</button>"
+    html += "<button onclick=\"document.querySelector('[data-module=vendas-graos]').click();\" style=\"margin-top:12px;background:#1565c0;color:#fff;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;font-size:12px\">Cadastrar Venda</button>"
     html += "</div>"
   } else {
     // Summary bar
@@ -372,7 +372,7 @@ var html = "";
   html += "<div style=\"display:grid;grid-template-columns:1fr 1fr;gap:8px\">"
   var acoes = [
     {label:"+ Lancamento",mod:"lancamentos",bg:"#2d7d32"},
-    {label:"Nova Venda",mod:"vendas-grãos",bg:"#1565c0"},
+    {label:"Nova Venda",mod:"vendas-graos",bg:"#1565c0"},
     {label:"Fechar Safra",mod:"fechamento-safra",bg:"#7b1fa2"},
     {label:"Dashboard",mod:"dashboard",bg:"#e65100"},
     {label:"Insumos",mod:"insumos",bg:"#795548"},

@@ -27,7 +27,7 @@ async function renderUsuarios() {
   try {
     var query = sb.from('usuarios')
       .select('*, fazendas(nome)', { count: 'exact' })
-      .neq('role', 'admin').order('nome');
+      .order('nome');
     if (_usrSearch) query = query.or('nome.ilike.%' + _usrSearch + '%,email.ilike.%' + _usrSearch + '%');
     query = query.range(_usrPage * _usrLimit, (_usrPage + 1) * _usrLimit - 1);
     var { data, count, error } = await query;

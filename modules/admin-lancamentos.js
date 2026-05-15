@@ -223,7 +223,7 @@ window.module_lancamentos = async function() {
       "</select></div>"+
       "<div class=\"form-field\">"+
       "<label class=\"form-label\">Categoria *</label>"+
-      "<select class=\"form-input\" id=\"lanc_cat\" onchange=\"window._lanc_onCatChange(this.value)\">" + (window._lancCategorias||[]).map(function(c){return "<option value=\""+c.id+"\""+((catAtual&&c.id===catAtual)?" selected":"")+">"+c.nome+"</option>";}).join("") + "</select></div>"+
+      "<select class=\"form-input\" id=\"lanc_cat\" onchange=\"window._lanc_onCatChange(this.value)\">" + (window._lancCategorias||[]).filter(function(c){var tp=(document.getElementById("lanc_tipo")||{}).value||tipoAtual||"despesa"; return !c.tipo || c.tipo===tp;}).map(function(c){return "<option value=\""+c.id+"\""+((catAtual&&c.id===catAtual)?" selected":"")+">"+c.nome+"</option>";}).join("") + "</select></div>"+
       "<div class=\"form-field\"><label>Data *</label>"+
       "<input id=\"lanc_data\" type=\"date\" value=\""+((l&&l.data_lancamento)?l.data_lancamento.substring(0,10):today())+"\"/></div>"+
       "<div class=\"form-field\"><label>Fazenda *</label>"+
@@ -600,6 +600,7 @@ window.module_lancamentos = async function() {
   };
 
   window._lanc_onTipoChange = function(tipo){
+    try{ var catSel=document.getElementById("lanc_cat"); if(catSel){ var prev=catSel.value; var opts=(window._lancCategorias||[]).filter(function(c){return !c.tipo || c.tipo===tipo;}); catSel.innerHTML=opts.map(function(c){return "<option value=\""+c.id+"\""+(c.id===prev?" selected":"")+">"+c.nome+"</option>";}).join(""); if(!opts.find(function(c){return c.id===prev;})){catSel.value = opts[0]?opts[0].id:"";} } }catch(e){}
     if(tipo==="receita"){
       var ms=document.getElementById("lanc_maq"); if(ms) ms.value="";
       var hw=document.getElementById("lanc_horas_wrap"); if(hw) hw.style.display="none";

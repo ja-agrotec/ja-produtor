@@ -1,5 +1,5 @@
 // ============================================================
-// JA AGRO INTELLIGENCE — Configuração Central do Sistema
+// JA AGROTEC · Módulo Produtor — Configuração Central
 // config.js
 // ============================================================
 // ⚠️  ATENÇÃO: Este arquivo contém chaves sensíveis.
@@ -11,8 +11,10 @@
 const JA = {
 
   // ── VERSÃO ──────────────────────────────────
-  versao: '1.0.0',
-  nome:   'JA Agro Intelligence',
+  versao: '1.1.0',
+  nome:    'JA Agrotec · Módulo Produtor',
+  ecossistema: 'JA Agrotec',
+  modulo:  'produtor',
 
   // ── SUPABASE ────────────────────────────────
   supabase: {

@@ -115,6 +115,88 @@ Total acumulado no projeto: **34+ commits**.
 6. **Testar PWA** em dispositivo móvel.
 7. **Polimento visual**: logo SVG dedicado, favicons, splash screens.
 
+## 7. Banco de Dados
+
+### 7.1 Projeto Supabase atual (Módulo Produtor)
+
+- **URL:** `https://gohoqgctcqltorfeohom.supabase.co`
+- **Stack:** PostgreSQL + RLS + PostgREST + Realtime
+- **Chave usada no front:** apenas `anon` (em `config.js`)
+- **Schema:** `public`
+- **Versão do schema:** 2.0.0
+
+> Cooperativa e Agenda terão **projetos Supabase próprios** (isolamento de dados, billing e RLS).
+
+### 7.2 Tabelas (`public`)
+
+| Tabela | Propósito |
+|---|---|
+| `fazendas` | Cadastro de fazendas (multi-fazenda) |
+| `usuarios` | Usuários do sistema (ADMIN, GERENTE, OPERADOR) ligados a fazenda |
+| `talhoes` | Talhões da fazenda (área, cultura) |
+| `safras` | Safras por talhão/cultura |
+| `categorias_lancamento` | Categorias de despesas e custos |
+| `insumos` | Estoque e cadastro de insumos |
+| `maquinas` | Frota e implementos (com `fazenda_atual_id` para multi-fazenda) |
+| `operadores` | Operadores de máquina |
+| `lancamentos` | Lançamentos de custo/operação (núcleo contábil) |
+| `lancamentos_offline` | Buffer para sincronização offline |
+| `manutencoes` | Histórico de manutenções de máquinas |
+| `vendas_graos` | Vendas de grãos (com extensões de exportação) |
+| `entregas_graos` | Entregas vinculadas a vendas |
+| `qualidade_registro` | Registros de qualidade (umidade, impureza, etc.) |
+| `documentos` | Anexos/arquivos (NF, contratos, laudos, fotos) |
+
+**Total: 15 tabelas.**
+
+### 7.3 Enums
+
+- `tipo_documento_enum`: NOTA_FISCAL, CONTRATO, LAUDO_LABORATORIAL, FOTO_AMOSTRA, etc.
+
+### 7.4 Views
+
+- `vw_dashboard` — agregados para o painel principal.
+
+### 7.5 Functions (PL/pgSQL)
+
+- `get_user_role()` — retorna papel do usuário autenticado.
+- `get_user_fazenda()` — retorna fazenda do usuário autenticado.
+- `set_atualizado_em()` — trigger helper para `atualizado_em`.
+- `calc_custo_total()` — cálculo de custo de lançamento.
+- `update_safra_totals()` — recalcula totais da safra.
+- `update_estoque_insumo()` — atualiza estoque ao lançar consumo.
+
+### 7.6 RLS (Row Level Security)
+
+- **Ativo em todas as tabelas relevantes.**
+- **28 policies** declaradas no schema base.
+- Padrão de isolamento: por `fazenda_id` + papel (`get_user_role`).
+- ADMIN vê tudo; GERENTE vê sua fazenda; OPERADOR vê apenas seus próprios lançamentos.
+
+### 7.7 Migrations aplicadas (pasta `database/`)
+
+| Arquivo | O que faz |
+|---|---|
+| `schema.sql` | Schema completo v2.0.0 (15 tabelas, 28 policies, view, functions). Inclui `fazenda_atual_id` em `maquinas` para multi-fazenda. |
+| `documentos.sql` | Cria `tipo_documento_enum` e tabela `documentos` com RLS. |
+| `migration_vendas_exportacao.sql` | Adiciona `qualidade_registro` e `entregas_graos`; estende `vendas_graos`, `fazendas`, `talhoes`, `insumos` com campos de exportação. |
+| `tipo_cobranca_migration.sql` | Adiciona campos de `tipo_cobranca` em `insumos`, `maquinas`, `categorias_lancamento`, `lancamentos`. |
+
+### 7.8 Convenções do banco
+
+- Toda tabela tem `id uuid PRIMARY KEY DEFAULT gen_random_uuid()`.
+- Toda tabela tem `criado_em timestamptz DEFAULT now()` e `atualizado_em timestamptz` mantido por trigger.
+- Multi-fazenda: a maioria das tabelas tem `fazenda_id uuid REFERENCES fazendas(id)`.
+- Soft delete não é padrão; usar `ativo boolean` quando aplicável.
+- **Nunca usar `service_role` no front.** Sempre `anon` + RLS.
+- Novas migrations: criar arquivo em `database/` com prefixo descritivo e aplicar via Supabase SQL Editor.
+
+### 7.9 Tab de referência
+
+- Supabase SQL Editor (sessão atual): `zpgabskeunywcgtojcrg` — nota: este é o **projeto ja-agenda/ja-agro** aberto na aba; o projeto produtivo do Módulo Produtor é `gohoqgctcqltorfeohom` conforme `config.js`. **Verificar/consolidar projeto Supabase oficial antes de criar Cooperativa/Agenda.**
+
+---
+
 ---
 
 _Atualizado em 18/05/2026 após a sessão de rebrand. Próxima sessão deve começar lendo este arquivo._

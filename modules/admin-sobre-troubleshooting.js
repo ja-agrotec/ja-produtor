@@ -2,7 +2,7 @@
 // JA AGROTEC · Modulo Produtor — Troubleshooting
 // admin-sobre-troubleshooting.js
 // ============================================================
-window.module_sobre_troubleshooting = function() {
+window['module_sobre-troubleshooting'] = function() {
   const mc = document.getElementById('mainContent');
   if (!mc) return;
   mc.innerHTML =

@@ -2,7 +2,7 @@
 // JA AGROTEC · Modulo Produtor — Ajuda
 // admin-sobre-ajuda.js
 // ============================================================
-window.module_sobre_ajuda = function() {
+window['module_sobre-ajuda'] = function() {
   const mc = document.getElementById('mainContent');
   if (!mc) return;
   mc.innerHTML =

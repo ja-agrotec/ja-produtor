@@ -2,7 +2,7 @@
 // JA AGROTEC · Modulo Produtor — Ecossistema
 // admin-sobre-ecossistema.js
 // ============================================================
-window.module_sobre_ecossistema = function() {
+window['module_sobre-ecossistema'] = function() {
   const mc = document.getElementById('mainContent');
   if (!mc) return;
   mc.innerHTML =

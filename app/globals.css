@@ -1,0 +1,98 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =====================================================
+   JA Agrotec · Modulo Produtor - Design System tokens
+   Fonte de verdade: docs/DESIGN-SYSTEM.md
+   ===================================================== */
+:root {
+  --dark:      #1A2E1A;
+  --dark2:     #152615;
+  --green:     #7CB342;
+  --green2:    #8BC34A;
+  --green-lt:  #A5D6A7;
+  --green-dim: #4A5A4A;
+  --green-bg:  #f0f7eb;
+
+  --text:      #1A2E1A;
+  --muted:     #5A7560;
+  --dim:       #8fa892;
+  --brd:       #dde8da;
+  --bg:        #f4f7f2;
+  --white:     #ffffff;
+
+  --danger:    #e53935;
+  --danger-lt: #fdf3f3;
+  --warn:      #f57c00;
+  --warn-lt:   #fff8f0;
+  --info:      #1565c0;
+  --info-lt:   #e8f0fe;
+  --success:   #2e7d32;
+  --success-lt:#f0f7f0;
+
+  --sidebar-w: 240px;
+  --topbar-h:  60px;
+  --r:         10px;
+  --r-lg:      14px;
+  --shadow:    0 2px 12px rgba(26,46,26,.08);
+  --shadow-lg: 0 4px 24px rgba(26,46,26,.12);
+
+  --f:  var(--font-jakarta), "Plus Jakarta Sans", system-ui, sans-serif;
+  --f2: var(--font-rajdhani), "Rajdhani", system-ui, sans-serif;
+}
+
+@layer base {
+  body {
+    font-family: var(--f);
+    color: var(--text);
+    background: var(--bg);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, .h1 { font-family: var(--f2); font-size: 28px; font-weight: 700; color: var(--text); letter-spacing: -0.01em; }
+  h2, .h2 { font-family: var(--f2); font-size: 22px; font-weight: 600; color: var(--text); }
+  h3, .h3 { font-family: var(--f2); font-size: 18px; font-weight: 600; color: var(--text); }
+  small,  .small { font-size: 12px; }
+  ::selection { background: var(--green-lt); color: var(--dark); }
+}
+
+@layer utilities {
+  .font-display { font-family: var(--f2); }
+  .text-caps {
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-weight: 600;
+    font-size: 11px;
+    color: var(--green-dim);
+  }
+  .gradient-sidebar { background: linear-gradient(180deg, #1A2E1A 0%, #152615 100%); }
+  .gradient-hero    { background: linear-gradient(135deg, #1A2E1A 0%, #2d4a2d 100%); }
+  .gradient-primary { background: linear-gradient(135deg, #7CB342 0%, #8BC34A 100%); }
+}
+
+/* Tabelas usadas em todas as listagens */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th {
+  text-align: left; padding: 10px 12px;
+  background: var(--green-bg); color: var(--text);
+  font-weight: 600; font-size: 12px;
+  border-bottom: 1px solid var(--brd);
+  white-space: nowrap;
+}
+.tbl td { padding: 10px 12px; border-bottom: 1px solid var(--brd); }
+.tbl tbody tr:nth-child(even) { background: #fafcf8; }
+.tbl tbody tr:hover { background: rgba(165,214,167,.18); }
+
+/* Grids reutilizaveis */
+.grid-cards { display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.grid-cards-lg { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+
+/* KPI card accent bar (variante por cor) */
+.kpi-accent { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; }
+.kpi-accent.green  { background: var(--green); }
+.kpi-accent.orange { background: var(--warn); }
+.kpi-accent.red    { background: var(--danger); }
+.kpi-accent.blue   { background: var(--info); }
+.kpi-accent.purple { background: #6a1b9a; }

@@ -15,10 +15,16 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["business", "productivity", "agriculture"],
     icons: [
       {
-        src: "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTkyIj48cmVjdCB3aWR0aD0iMTkyIiBoZWlnaHQ9IjE5MiIgZmlsbD0iIzdDQjM0MiIgcng9IjI0Ii8+PHRleHQgeD0iOTYiIHk9IjEzMCIgZm9udC1zaXplPSIxMTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiPvCfjL48L3RleHQ+PC9zdmc+",
-        sizes: "192x192",
-        type: "image/svg+xml",
+        src: "/logo-ja-agrotec.png",
+        sizes: "any",
+        type: "image/png",
         purpose: "any",
+      },
+      {
+        src: "/logo-ja-agrotec.png",
+        sizes: "any",
+        type: "image/png",
+        purpose: "maskable",
       },
     ],
     shortcuts: [

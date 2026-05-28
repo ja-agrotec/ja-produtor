@@ -4,185 +4,112 @@ import { useEffect, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { fmtDataHora } from "@/lib/format";
-import { LS_OFFLINE_QUEUE } from "@/lib/utils";
+import {
+  EVT_QUEUE_CHANGED,
+  emConexaoReal,
+  lerFila,
+  removerDaFila,
+  sincronizar,
+  ultimaSincronizacao,
+  type OfflineItem,
+} from "@/lib/offline";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import KpiCard from "@/components/ui/KpiCard";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
-
-type OfflineItem = {
-  tipo?: string;
-  tabela?: string;
-  data_lancamento?: string;
-  criado_em?: string;
-  status?: string;
-  descricao?: string;
-  categoria?: string;
-  valor?: number | string;
-  modulo?: string;
-  payload?: any;
-  [k: string]: any;
-};
-
-function carregarFila(): OfflineItem[] {
-  if (typeof window === "undefined") return [];
-  try {
-    return JSON.parse(localStorage.getItem(LS_OFFLINE_QUEUE) || "[]");
-  } catch {
-    return [];
-  }
-}
-
-function salvarFila(q: OfflineItem[]) {
-  localStorage.setItem(LS_OFFLINE_QUEUE, JSON.stringify(q));
-}
 
 export default function OfflinePage() {
   const [fila, setFila] = useState<OfflineItem[]>([]);
   const [online, setOnline] = useState<boolean>(true);
   const [sincronizando, setSincronizando] = useState(false);
   const [confirmar, setConfirmar] = useState<number | null>(null);
+  const [ultimaSync, setUltimaSync] = useState<string | null>(null);
 
-  const [supaPend, setSupaPend] = useState(0);
-  const [supaErro, setSupaErro] = useState(0);
-  const [supaOk, setSupaOk] = useState(0);
+  function refresh() {
+    setFila(lerFila());
+    setUltimaSync(ultimaSincronizacao());
+  }
 
   useEffect(() => {
-    setFila(carregarFila());
-    setOnline(navigator.onLine);
-    const upOn = () => setOnline(true);
+    refresh();
+    // Estado inicial e listeners
+    void emConexaoReal().then(setOnline);
+    const upOn = async () => setOnline(await emConexaoReal());
     const upOff = () => setOnline(false);
+    const onQ = () => refresh();
     window.addEventListener("online", upOn);
     window.addEventListener("offline", upOff);
-    carregarKpisSupabase();
+    window.addEventListener(EVT_QUEUE_CHANGED, onQ as any);
     return () => {
       window.removeEventListener("online", upOn);
       window.removeEventListener("offline", upOff);
+      window.removeEventListener(EVT_QUEUE_CHANGED, onQ as any);
     };
   }, []);
 
-  async function carregarKpisSupabase() {
-    const sb = getSupabase();
-    const [pend, err, ok] = await Promise.all([
-      sb
-        .from("lancamentos_offline")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "pendente"),
-      sb
-        .from("lancamentos_offline")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "erro"),
-      sb
-        .from("lancamentos_offline")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "sincronizado"),
-    ]);
-    setSupaPend(pend.count || 0);
-    setSupaErro(err.count || 0);
-    setSupaOk(ok.count || 0);
-  }
-
-  function recarregar() {
-    setFila(carregarFila());
-  }
-
   async function sincronizarItem(idx: number) {
-    if (!navigator.onLine) {
+    if (!online) {
       toast.error("Sem conexão");
       return;
     }
-    const q = carregarFila();
+    const q = lerFila();
     const item = q[idx];
     if (!item) return;
 
+    const sb = getSupabase();
     const tabela = item.tabela || "lancamentos";
-    const payload = item.payload || { ...item };
-    // Limpa metadados de fila do payload caso esteja inlined
+    let payload = item.payload || { ...item };
     if (!item.payload) {
       delete (payload as any).criado_em;
       delete (payload as any).status;
       delete (payload as any).tabela;
       delete (payload as any).modulo;
     }
-
-    const sb = getSupabase();
     const r = await sb.from(tabela).insert(payload);
     if (r.error) {
-      q[idx].status = "erro: " + r.error.message;
-      salvarFila(q);
-      setFila([...q]);
+      // Marca o item como erro, mantem na fila
+      const novaFila = lerFila();
+      if (novaFila[idx]) {
+        novaFila[idx] = { ...novaFila[idx], status: "erro: " + r.error.message };
+        // Salva direto (sem dispatch — refresh manual)
+        localStorage.setItem("ja_agro_offline_queue", JSON.stringify(novaFila));
+        setFila(novaFila);
+      }
       toast.error("Erro: " + r.error.message);
       return;
     }
-    q.splice(idx, 1);
-    salvarFila(q);
-    setFila([...q]);
-    toast.success("Item sincronizado!");
-    carregarKpisSupabase();
+    removerDaFila(idx);
+    refresh();
+    toast.success("Item sincronizado");
   }
 
   async function sincronizarTudo() {
-    if (!navigator.onLine) {
+    if (!online) {
       toast.error("Sem conexão");
       return;
     }
-    const q = carregarFila();
-    if (!q.length) {
+    if (lerFila().length === 0) {
       toast.info("Nenhum item pendente");
       return;
     }
     setSincronizando(true);
-    const sb = getSupabase();
-    let ok = 0;
-    let erros = 0;
-
-    for (let i = 0; i < q.length; i++) {
-      const item = q[i];
-      const tabela = item.tabela || "lancamentos";
-      const payload = item.payload || { ...item };
-      if (!item.payload) {
-        delete (payload as any).criado_em;
-        delete (payload as any).status;
-        delete (payload as any).tabela;
-        delete (payload as any).modulo;
-      }
-      const r = await sb.from(tabela).insert(payload);
-      if (r.error) {
-        erros++;
-        q[i].status = "erro: " + r.error.message;
-      } else {
-        ok++;
-        q[i].status = "sincronizado";
-      }
+    try {
+      const sb = getSupabase();
+      const { ok, erros } = await sincronizar(sb);
+      if (erros === 0) toast.success(`${ok} item(s) sincronizado(s)`);
+      else toast.warning(`${ok} OK · ${erros} com erro`);
+    } catch (e: any) {
+      toast.error("Erro ao sincronizar: " + (e?.message || e));
+    } finally {
+      setSincronizando(false);
+      refresh();
     }
-
-    // remove os sincronizados, mantém os com erro
-    const restante = q.filter((it) => !(it.status === "sincronizado"));
-    salvarFila(restante);
-    setFila(restante);
-    setSincronizando(false);
-
-    if (erros === 0) toast.success(`${ok} item(s) sincronizado(s)!`);
-    else toast.warning(`${ok} OK · ${erros} com erro`);
-    carregarKpisSupabase();
-  }
-
-  function removerItem(idx: number) {
-    const q = carregarFila();
-    q.splice(idx, 1);
-    salvarFila(q);
-    setFila([...q]);
-    toast.success("Item removido da fila");
-    setConfirmar(null);
   }
 
   function statusBadge(s: string | undefined) {
-    if (!s || s === "pendente")
-      return <span className="badge badge-warn">Pendente</span>;
-    if (s === "sincronizado")
-      return <span className="badge badge-success">Sincronizado</span>;
-    if (s.startsWith("erro"))
-      return <span className="badge badge-danger" title={s}>Erro</span>;
+    if (!s || s === "pendente") return <span className="badge badge-warn">Pendente</span>;
+    if (s === "sincronizado") return <span className="badge badge-success">Sincronizado</span>;
+    if (s.startsWith("erro")) return <span className="badge badge-danger" title={s}>Erro</span>;
     return <span className="badge badge-neutral">{s}</span>;
   }
 
@@ -191,20 +118,16 @@ export default function OfflinePage() {
       <PageHeader
         titulo="Fila Offline"
         icone="🔄"
-        subtitulo="Gerenciador de sincronização de dados capturados sem conexão"
+        subtitulo="Lançamentos capturados sem conexão aguardando envio ao servidor"
         acoes={
           <>
-            <button className="btn-ghost" onClick={recarregar}>
-              Atualizar
-            </button>
+            <button className="btn-ghost" onClick={refresh}>Atualizar</button>
             <button
               className="btn-primary"
               onClick={sincronizarTudo}
               disabled={sincronizando || !fila.length || !online}
             >
-              {sincronizando
-                ? "Sincronizando..."
-                : `Sincronizar tudo (${fila.length})`}
+              {sincronizando ? "Sincronizando..." : `Sincronizar tudo (${fila.length})`}
             </button>
           </>
         }
@@ -212,11 +135,11 @@ export default function OfflinePage() {
 
       <div className="grid-cards">
         <KpiCard
-          rotulo="Pendentes locais"
+          rotulo="Pendentes"
           valor={fila.length}
           icone="⏳"
           accent={fila.length > 0 ? "orange" : "green"}
-          hint="LocalStorage do navegador"
+          hint="No navegador"
         />
         <KpiCard
           rotulo="Conexão"
@@ -225,18 +148,11 @@ export default function OfflinePage() {
           accent={online ? "green" : "red"}
         />
         <KpiCard
-          rotulo="Erros no Supabase"
-          valor={supaErro}
-          icone="⚠️"
-          accent="red"
-          hint="Tabela lancamentos_offline"
-        />
-        <KpiCard
-          rotulo="Sincronizados (histórico)"
-          valor={supaOk}
-          icone="✅"
+          rotulo="Última sincronização"
+          valor={ultimaSync ? fmtDataHora(ultimaSync) : "—"}
+          icone="🕐"
           accent="blue"
-          hint={`Pend. Supabase: ${supaPend}`}
+          hint={ultimaSync ? "Registrada localmente" : "Nenhuma ainda"}
         />
       </div>
 
@@ -244,7 +160,7 @@ export default function OfflinePage() {
         <EmptyState
           icone="✅"
           titulo="Nada pendente"
-          descricao="Não há lançamentos aguardando sincronização no momento."
+          descricao="Não há lançamentos aguardando sincronização."
         />
       ) : (
         <div className="card overflow-x-auto">
@@ -265,14 +181,8 @@ export default function OfflinePage() {
               {fila.map((it, idx) => (
                 <tr key={idx}>
                   <td>{idx + 1}</td>
-                  <td style={{ fontSize: 12, color: "var(--muted)" }}>
-                    {fmtDataHora(it.criado_em)}
-                  </td>
-                  <td>
-                    <span className="badge badge-info">
-                      {it.modulo || it.tabela || "lancamentos"}
-                    </span>
-                  </td>
+                  <td style={{ fontSize: 12, color: "var(--muted)" }}>{fmtDataHora(it.criado_em)}</td>
+                  <td><span className="badge badge-info">{it.modulo || it.tabela || "lancamentos"}</span></td>
                   <td>{it.tipo || "—"}</td>
                   <td>{it.descricao || it.categoria || "—"}</td>
                   <td>{it.valor != null ? String(it.valor) : "—"}</td>
@@ -286,10 +196,7 @@ export default function OfflinePage() {
                       >
                         Reenviar
                       </button>
-                      <button
-                        className="btn-danger"
-                        onClick={() => setConfirmar(idx)}
-                      >
+                      <button className="btn-danger" onClick={() => setConfirmar(idx)}>
                         Remover
                       </button>
                     </div>
@@ -308,7 +215,14 @@ export default function OfflinePage() {
         destrutivo
         textoConfirmar="Remover"
         onCancelar={() => setConfirmar(null)}
-        onConfirmar={() => confirmar !== null && removerItem(confirmar)}
+        onConfirmar={() => {
+          if (confirmar !== null) {
+            removerDaFila(confirmar);
+            refresh();
+            toast.success("Item removido da fila");
+            setConfirmar(null);
+          }
+        }}
       />
     </div>
   );

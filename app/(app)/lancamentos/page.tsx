@@ -15,7 +15,14 @@ import type {
   TipoLancamento,
 } from "@/lib/types";
 import { fmtBRL, fmtData, fmtInt, hoje } from "@/lib/format";
-import { LS_OFFLINE_QUEUE, UNIDADES_PADRAO } from "@/lib/utils";
+import { UNIDADES_PADRAO } from "@/lib/utils";
+import {
+  enfileirar as enfileirarOfflineHelper,
+  sincronizar as sincronizarOfflineHelper,
+  tamanhoFila,
+  emConexaoReal,
+  EVT_QUEUE_CHANGED,
+} from "@/lib/offline";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import KpiCard from "@/components/ui/KpiCard";
@@ -144,14 +151,7 @@ export default function LancamentosPage() {
 
   // -- recarrega fila offline --
   const atualizarFila = useCallback(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(LS_OFFLINE_QUEUE);
-      const arr = raw ? JSON.parse(raw) : [];
-      setFilaOffline(Array.isArray(arr) ? arr.length : 0);
-    } catch {
-      setFilaOffline(0);
-    }
+    setFilaOffline(tamanhoFila());
   }, []);
 
   const carregar = useCallback(async () => {
@@ -194,6 +194,10 @@ export default function LancamentosPage() {
   useEffect(() => {
     void carregar();
     atualizarFila();
+    // Escuta mudancas vindas do OfflineBanner / outras paginas
+    const onQ = () => atualizarFila();
+    window.addEventListener(EVT_QUEUE_CHANGED, onQ as any);
+    return () => window.removeEventListener(EVT_QUEUE_CHANGED, onQ as any);
   }, [carregar, atualizarFila]);
 
   // Safras filtradas em cascata pela fazenda do filtro
@@ -370,16 +374,15 @@ export default function LancamentosPage() {
   }
 
   function enfileirarOffline(payload: any) {
-    if (typeof window === "undefined") return;
-    try {
-      const raw = localStorage.getItem(LS_OFFLINE_QUEUE);
-      const arr = raw ? JSON.parse(raw) : [];
-      arr.push(payload);
-      localStorage.setItem(LS_OFFLINE_QUEUE, JSON.stringify(arr));
-      atualizarFila();
-    } catch (e) {
-      console.error("Erro ao enfileirar", e);
-    }
+    enfileirarOfflineHelper({
+      tabela: "lancamentos",
+      payload,
+      modulo: "lancamentos",
+      tipo: payload?.tipo,
+      descricao: payload?.descricao,
+      valor: payload?.custo_total,
+    });
+    atualizarFila();
   }
 
   async function salvar() {
@@ -427,14 +430,27 @@ export default function LancamentosPage() {
         if (r.error) throw r.error;
         toast.success("Lancamento atualizado");
       } else {
-        // Suporte offline
-        if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        // Suporte offline: navigator.onLine falso = offline garantido;
+        // navigator.onLine true ainda pode falhar (wifi sem internet), entao
+        // ping rapido pro proprio dominio antes de tentar insert.
+        const ok = await emConexaoReal(3000);
+        if (!ok) {
           enfileirarOffline(payload);
           toast.info("Sem conexao — lancamento enviado para a fila offline");
         } else {
           const r = await sb.from("lancamentos").insert(payload);
-          if (r.error) throw r.error;
-          toast.success("Lancamento registrado");
+          if (r.error) {
+            // Erro do Supabase pode ser network — enfileira como fallback
+            const msg = String(r.error.message || "").toLowerCase();
+            if (msg.includes("fetch") || msg.includes("network")) {
+              enfileirarOffline(payload);
+              toast.warning("Conexao instavel — lancamento enviado para a fila offline");
+            } else {
+              throw r.error;
+            }
+          } else {
+            toast.success("Lancamento registrado");
+          }
         }
       }
       setModalAberto(false);
@@ -466,19 +482,17 @@ export default function LancamentosPage() {
     if (typeof window === "undefined") return;
     setSincronizando(true);
     try {
-      const raw = localStorage.getItem(LS_OFFLINE_QUEUE);
-      const arr: any[] = raw ? JSON.parse(raw) : [];
-      if (!arr.length) {
-        toast.info("Nenhum lancamento pendente");
-        setSincronizando(false);
-        return;
-      }
       const sb = getSupabase();
-      const r = await sb.from("lancamentos").insert(arr);
-      if (r.error) throw r.error;
-      localStorage.removeItem(LS_OFFLINE_QUEUE);
+      // Sync granular: cada item por vez. Sucessos saem, erros ficam marcados.
+      const { ok, erros } = await sincronizarOfflineHelper(sb);
+      if (ok === 0 && erros === 0) {
+        toast.info("Nenhum lancamento pendente");
+      } else if (erros === 0) {
+        toast.success(`${ok} lancamento(s) sincronizado(s)`);
+      } else {
+        toast.warning(`${ok} OK · ${erros} com erro (ver fila offline pra detalhes)`);
+      }
       atualizarFila();
-      toast.success(`${arr.length} lancamento(s) sincronizado(s)`);
       void carregar();
     } catch (e: any) {
       toast.error("Erro ao sincronizar: " + (e?.message || e));

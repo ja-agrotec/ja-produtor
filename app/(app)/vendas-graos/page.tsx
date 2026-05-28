@@ -517,7 +517,8 @@ function ContratoModal({
   function aoMudarSafra(id: string) {
     setSafraId(id);
     const s = safras.find((x) => x.id === id);
-    if (s && !cultura) setCultura(s.cultura);
+    // Autopreenche cultura SEMPRE que muda safra (sobrescreve valor antigo)
+    if (s) setCultura(s.cultura);
   }
 
   async function salvar() {

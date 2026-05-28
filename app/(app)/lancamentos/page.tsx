@@ -237,8 +237,15 @@ export default function LancamentosPage() {
 
   const talhoesForm = useMemo(() => {
     if (!form.fazenda_id) return [] as Talhao[];
-    return talhoes.filter((t) => t.fazenda_id === form.fazenda_id);
-  }, [talhoes, form.fazenda_id]);
+    const daFazenda = talhoes.filter((t) => t.fazenda_id === form.fazenda_id);
+    // Se safra esta selecionada e existe ao menos 1 talhao vinculado a ela,
+    // restringe aos talhoes da safra. Senao mantem todos da fazenda.
+    if (form.safra_id) {
+      const naSafra = daFazenda.filter((t) => t.safra_id === form.safra_id);
+      if (naSafra.length > 0) return naSafra;
+    }
+    return daFazenda;
+  }, [talhoes, form.fazenda_id, form.safra_id]);
 
   const operadoresForm = useMemo(() => {
     if (!form.fazenda_id) return operadores;
@@ -254,6 +261,30 @@ export default function LancamentosPage() {
     () => categorias.filter((c) => !c.tipo || c.tipo === form.tipo),
     [categorias, form.tipo],
   );
+
+  // Insumos disponiveis pra fazenda atual (global/sem fazenda OU matching)
+  const insumosFazenda = useMemo(() => {
+    return insumos.filter((i) => {
+      if (i.global) return true;
+      if (!i.fazenda_id) return true;
+      return !form.fazenda_id || i.fazenda_id === form.fazenda_id;
+    });
+  }, [insumos, form.fazenda_id]);
+
+  // Insumos filtrados tambem pela categoria selecionada.
+  // Quando categoria esta presente, exige que `insumos.categoria` bata com
+  // `categorias_lancamento.nome` (case-insensitive). Insumos sem categoria
+  // cadastrada continuam disponiveis (legacy graceful).
+  const insumosFiltrados = useMemo(() => {
+    if (!form.categoria_id) return insumosFazenda;
+    const cat = categorias.find((c) => c.id === form.categoria_id);
+    if (!cat) return insumosFazenda;
+    const nomeCat = cat.nome.toLowerCase().trim();
+    return insumosFazenda.filter((i) => {
+      if (!i.categoria) return true;
+      return i.categoria.toLowerCase().trim() === nomeCat;
+    });
+  }, [insumosFazenda, categorias, form.categoria_id]);
 
   // Aviso de certificacao baseado em talhao + insumo
   useEffect(() => {
@@ -434,15 +465,56 @@ export default function LancamentosPage() {
     }
   }
 
-  // Auto-preenche unidade e preco ao escolher insumo
+  // Auto-preenche unidade, preco e descricao ao escolher insumo
   function onChangeInsumo(insId: string) {
     const ins = insumos.find((i) => i.id === insId);
+    setForm((f) => {
+      const novoCustoUnit = ins?.preco_unitario != null ? String(ins.preco_unitario) : f.custo_unitario;
+      // Se ja tem quantidade, recalcula o custo_total
+      const q = Number(f.quantidade);
+      const u = Number(novoCustoUnit);
+      const novoCustoTotal =
+        !isNaN(q) && !isNaN(u) && q > 0 && u > 0 ? (q * u).toFixed(2) : f.custo_total;
+      return {
+        ...f,
+        insumo_id: insId,
+        unidade: ins?.unidade || f.unidade,
+        custo_unitario: novoCustoUnit,
+        custo_total: novoCustoTotal,
+        descricao: f.descricao || ins?.nome || "",
+      };
+    });
+  }
+
+  // Auto-preenche tipo (despesa/receita) ao escolher categoria
+  // e reseta insumo se nao bate mais com a nova categoria
+  function onChangeCategoria(catId: string) {
+    const cat = categorias.find((c) => c.id === catId);
+    const novoTipo: TipoLancamento = cat?.tipo || form.tipo;
+    let novoInsumo = form.insumo_id;
+    if (catId && novoInsumo) {
+      const ins = insumos.find((i) => i.id === novoInsumo);
+      const insCat = ins?.categoria?.toLowerCase().trim();
+      const catNome = cat?.nome.toLowerCase().trim();
+      const bate = !insCat || (catNome && insCat === catNome);
+      if (!bate) novoInsumo = "";
+    }
     setForm((f) => ({
       ...f,
-      insumo_id: insId,
-      unidade: ins?.unidade || f.unidade,
-      custo_unitario: ins?.preco_unitario != null ? String(ins.preco_unitario) : f.custo_unitario,
+      categoria_id: catId,
+      tipo: novoTipo,
+      insumo_id: novoInsumo,
     }));
+  }
+
+  // Ao mudar tipo, mantem categoria so se ela for compativel
+  function onChangeTipo(novoTipo: TipoLancamento) {
+    let novaCat = form.categoria_id;
+    if (novaCat) {
+      const cat = categorias.find((c) => c.id === novaCat);
+      if (cat?.tipo && cat.tipo !== novoTipo) novaCat = "";
+    }
+    setForm((f) => ({ ...f, tipo: novoTipo, categoria_id: novaCat }));
   }
 
   return (
@@ -696,7 +768,7 @@ export default function LancamentosPage() {
             <select
               className="input"
               value={form.tipo}
-              onChange={(e) => setForm({ ...form, tipo: e.target.value as TipoLancamento, categoria_id: "" })}
+              onChange={(e) => onChangeTipo(e.target.value as TipoLancamento)}
             >
               <option value="despesa">Despesa</option>
               <option value="receita">Receita</option>
@@ -707,7 +779,7 @@ export default function LancamentosPage() {
             <select
               className="input"
               value={form.categoria_id}
-              onChange={(e) => setForm({ ...form, categoria_id: e.target.value })}
+              onChange={(e) => onChangeCategoria(e.target.value)}
             >
               <option value="">-- Selecione --</option>
               {categoriasForm.map((c) => (
@@ -739,6 +811,7 @@ export default function LancamentosPage() {
                   talhao_id: "",
                   operador_id: "",
                   maquina_id: "",
+                  insumo_id: "",
                 })
               }
             >
@@ -755,7 +828,7 @@ export default function LancamentosPage() {
             <select
               className="input"
               value={form.safra_id}
-              onChange={(e) => setForm({ ...form, safra_id: e.target.value })}
+              onChange={(e) => setForm({ ...form, safra_id: e.target.value, talhao_id: "" })}
             >
               <option value="">Nenhuma</option>
               {safrasForm.map((s) => (
@@ -782,15 +855,28 @@ export default function LancamentosPage() {
             </select>
           </div>
           <div>
-            <label className="label">Insumo</label>
+            <label className="label">
+              Insumo
+              {form.categoria_id && (
+                <span style={{ color: "var(--dim)", fontWeight: 400, marginLeft: 6 }}>
+                  (compatíveis com a categoria)
+                </span>
+              )}
+            </label>
             <select className="input" value={form.insumo_id} onChange={(e) => onChangeInsumo(e.target.value)}>
               <option value="">Nenhum</option>
-              {insumos.map((i) => (
+              {insumosFiltrados.map((i) => (
                 <option key={i.id} value={i.id}>
                   {i.nome}
+                  {i.categoria ? ` — ${i.categoria}` : ""}
                 </option>
               ))}
             </select>
+            {form.categoria_id && insumosFiltrados.length === 0 && (
+              <div className="text-xs mt-1" style={{ color: "var(--warn)" }}>
+                Nenhum insumo cadastrado nessa categoria pra esta fazenda.
+              </div>
+            )}
           </div>
           <div>
             <label className="label">Maquina</label>

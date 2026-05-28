@@ -523,7 +523,23 @@ export default function QualidadeLotesPage() {
               <select
                 className="input"
                 value={form.safra_id}
-                onChange={(e) => setForm({ ...form, safra_id: e.target.value })}
+                onChange={(e) => {
+                  const novoId = e.target.value;
+                  const s = safras.find((x) => x.id === novoId);
+                  // Autopreenche cultura com a da safra (sobrescreve, pra coerencia).
+                  // Reseta talhao se o atual nao pertence a safra escolhida.
+                  let novoTalhao = form.talhao_id;
+                  if (novoId && novoTalhao) {
+                    const t = talhoes.find((x) => x.id === novoTalhao);
+                    if (t && t.safra_id && t.safra_id !== novoId) novoTalhao = "";
+                  }
+                  setForm({
+                    ...form,
+                    safra_id: novoId,
+                    cultura: s?.cultura ? s.cultura.toLowerCase() : form.cultura,
+                    talhao_id: novoTalhao,
+                  });
+                }}
                 disabled={!form.fazenda_id}
               >
                 <option value="">Sem safra</option>
@@ -541,17 +557,31 @@ export default function QualidadeLotesPage() {
               <select
                 className="input"
                 value={form.talhao_id}
-                onChange={(e) => setForm({ ...form, talhao_id: e.target.value })}
+                onChange={(e) => {
+                  const novoId = e.target.value;
+                  const t = talhoes.find((x) => x.id === novoId);
+                  // Se talhao tem cultura_atual e cultura do form vazio, autopreenche
+                  const cult = t?.cultura_atual?.toLowerCase() || "";
+                  setForm({
+                    ...form,
+                    talhao_id: novoId,
+                    cultura: form.cultura || cult,
+                  });
+                }}
                 disabled={!form.fazenda_id}
               >
                 <option value="">Sem talhão</option>
-                {talhoes
-                  .filter((t) => t.fazenda_id === form.fazenda_id)
-                  .map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
+                {(() => {
+                  // Talhoes da fazenda; se safra selecionada e ha talhoes vinculados, restringe
+                  const daFazenda = talhoes.filter((t) => t.fazenda_id === form.fazenda_id);
+                  if (form.safra_id) {
+                    const naSafra = daFazenda.filter((t) => t.safra_id === form.safra_id);
+                    if (naSafra.length > 0) return naSafra;
+                  }
+                  return daFazenda;
+                })().map((t) => (
+                  <option key={t.id} value={t.id}>{t.nome}</option>
+                ))}
               </select>
             </div>
             <div>

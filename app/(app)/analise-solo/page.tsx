@@ -549,7 +549,21 @@ export default function AnaliseSoloPage() {
             </div>
             <div>
               <label className="label">Talhão</label>
-              <select className="input" value={form.talhao_id} onChange={(e) => setForm({ ...form, talhao_id: e.target.value })}>
+              <select
+                className="input"
+                value={form.talhao_id}
+                onChange={(e) => {
+                  const novoTalhao = e.target.value;
+                  const t = talhoesFormFiltrados.find((x) => x.id === novoTalhao);
+                  setForm({
+                    ...form,
+                    talhao_id: novoTalhao,
+                    // Autopreenche cultura_referencia com a cultura_atual do talhao se ainda vazio
+                    cultura_referencia:
+                      form.cultura_referencia || (t?.cultura_atual ?? "") || "",
+                  });
+                }}
+              >
                 <option value="">(Todos / fazenda)</option>
                 {talhoesFormFiltrados.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
               </select>

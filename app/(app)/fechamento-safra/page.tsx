@@ -790,7 +790,23 @@ function NovoFechamento({
             <select
               className="input"
               value={form.safra_id}
-              onChange={(e) => setForm({ ...form, safra_id: e.target.value })}
+              onChange={(e) => {
+                const novoId = e.target.value;
+                const s = safrasAbertas.find((x) => x.id === novoId);
+                // Autopreenche producao_sc / receita_total com os valores ja
+                // registrados na safra (se houver). Nao sobrescreve se user ja
+                // digitou algo no campo.
+                setForm({
+                  ...form,
+                  safra_id: novoId,
+                  producao_sc:
+                    form.producao_sc ||
+                    (s?.producao_sc && Number(s.producao_sc) > 0 ? String(s.producao_sc) : ""),
+                  receita_total:
+                    form.receita_total ||
+                    (s?.receita_total && Number(s.receita_total) > 0 ? String(s.receita_total) : ""),
+                });
+              }}
             >
               <option value="">-- Selecione uma safra aberta --</option>
               {safrasAbertas.map((s) => (

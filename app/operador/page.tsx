@@ -52,6 +52,7 @@ type FormState = {
   safra_id: string;
   operador_id: string;
   maquina_id: string;
+  nota_fiscal: string;
   observacoes: string;
 };
 
@@ -69,6 +70,7 @@ const VAZIO: FormState = {
   safra_id: "",
   operador_id: "",
   maquina_id: "",
+  nota_fiscal: "",
   observacoes: "",
 };
 
@@ -79,6 +81,7 @@ export default function OperadorHomePage() {
   const [salvando, setSalvando] = useState(false);
   const [filaCount, setFilaCount] = useState(0);
   const [meusLancHoje, setMeusLancHoje] = useState<any[]>([]);
+  const [avisoCertificacao, setAvisoCertificacao] = useState<string | null>(null);
 
   useEffect(() => {
     setCache(lerCache());
@@ -136,12 +139,66 @@ export default function OperadorHomePage() {
     [cache.categorias, form.tipo],
   );
 
+  // Insumo selecionado (objeto completo do cache)
+  const insumoSel = useMemo(
+    () => cache.insumos.find((i) => i.id === form.insumo_id),
+    [cache.insumos, form.insumo_id],
+  );
+
+  // Info de estoque ao escolher insumo + quantidade
+  // Cache pode estar defasado (sync mais antiga), mas eh o melhor que tem offline.
+  const estoqueInfo = useMemo(() => {
+    if (!insumoSel || !form.quantidade) return null;
+    const atual = Number(insumoSel.estoque_atual ?? 0);
+    const qtd = Number(form.quantidade);
+    if (isNaN(qtd) || qtd <= 0) return null;
+    const apos = atual - qtd;
+    return {
+      atual,
+      qtd,
+      apos,
+      suficiente: apos >= 0,
+      proximoMin: insumoSel.estoque_minimo != null && apos <= Number(insumoSel.estoque_minimo),
+    };
+  }, [insumoSel, form.quantidade]);
+
+  // Aviso de certificacao: paridade com /lancamentos do produtor
+  useEffect(() => {
+    if (!form.talhao_id || !form.insumo_id) {
+      setAvisoCertificacao(null);
+      return;
+    }
+    const tal = cache.talhoes.find((t) => t.id === form.talhao_id);
+    const ins = cache.insumos.find((i) => i.id === form.insumo_id);
+    if (!tal || !ins) {
+      setAvisoCertificacao(null);
+      return;
+    }
+    if (tal.segue_certificacao && ins.certificacao_permitida === false) {
+      setAvisoCertificacao(
+        `O talhão "${tal.nome}" segue regras de certificação e o insumo "${ins.nome}" NÃO é permitido. Você pode salvar mesmo assim, mas a operação será marcada como não conforme.`,
+      );
+    } else {
+      setAvisoCertificacao(null);
+    }
+  }, [form.talhao_id, form.insumo_id, cache.talhoes, cache.insumos]);
+
   function abrirNovo() {
     setForm({
       ...VAZIO,
       operador_id: cache.perfil?.operador_id || "",
     });
     setModalAberto(true);
+  }
+
+  // Ao mudar tipo, mantem categoria so se for compativel
+  function onChangeTipo(novoTipo: "despesa" | "receita") {
+    let novaCat = form.categoria_id;
+    if (novaCat) {
+      const cat = cache.categorias.find((c) => c.id === novaCat);
+      if (cat?.tipo && cat.tipo !== novoTipo) novaCat = "";
+    }
+    setForm((f) => ({ ...f, tipo: novoTipo, categoria_id: novaCat }));
   }
 
   function onChangeCategoria(catId: string) {
@@ -210,6 +267,7 @@ export default function OperadorHomePage() {
         custo_total: total,
         operador_id: form.operador_id || cache.perfil.operador_id || null,
         maquina_id: form.maquina_id || null,
+        nota_fiscal: form.nota_fiscal.trim() || null,
         observacoes: form.observacoes.trim() || null,
         usuario_id: cache.perfil.usuario_id,
       };
@@ -329,14 +387,14 @@ export default function OperadorHomePage() {
               <select
                 className="input"
                 value={form.tipo}
-                onChange={(e) => setForm({ ...form, tipo: e.target.value as any, categoria_id: "" })}
+                onChange={(e) => onChangeTipo(e.target.value as "despesa" | "receita")}
               >
                 <option value="despesa">Despesa</option>
                 <option value="receita">Receita</option>
               </select>
             </div>
             <div>
-              <label className="label">Data</label>
+              <label className="label">Data *</label>
               <input
                 type="date"
                 className="input"
@@ -356,7 +414,14 @@ export default function OperadorHomePage() {
 
           {categoriaPrecisaInsumo && (
             <div>
-              <label className="label">Insumo</label>
+              <label className="label">
+                Insumo
+                {form.categoria_id && (
+                  <span style={{ color: "var(--dim)", fontWeight: 400, marginLeft: 6 }}>
+                    (compatíveis com a categoria)
+                  </span>
+                )}
+              </label>
               <select className="input" value={form.insumo_id} onChange={(e) => onChangeInsumo(e.target.value)}>
                 <option value="">Nenhum</option>
                 {insumosFiltrados.map((i) => (
@@ -365,6 +430,31 @@ export default function OperadorHomePage() {
                   </option>
                 ))}
               </select>
+              {form.categoria_id && insumosFiltrados.length === 0 && (
+                <div className="text-xs mt-1" style={{ color: "var(--warn)" }}>
+                  Nenhum insumo desta categoria no cache. Pode salvar sem insumo.
+                </div>
+              )}
+              {/* Indicador de estoque ao escolher insumo + quantidade */}
+              {estoqueInfo && (
+                <div
+                  className="text-xs mt-1.5 p-2 rounded-ja"
+                  style={{
+                    background: estoqueInfo.suficiente
+                      ? (estoqueInfo.proximoMin ? "var(--warn-lt)" : "var(--green-bg)")
+                      : "var(--danger-lt)",
+                    color: estoqueInfo.suficiente
+                      ? (estoqueInfo.proximoMin ? "var(--warn)" : "var(--success)")
+                      : "var(--danger)",
+                    fontWeight: 600,
+                  }}
+                >
+                  Estoque atual: {estoqueInfo.atual} {insumoSel?.unidade || ""} ·
+                  {" "}Após este lançamento: {estoqueInfo.apos.toFixed(2)} {insumoSel?.unidade || ""}
+                  {!estoqueInfo.suficiente && " ⚠️ estoque ficará negativo"}
+                  {estoqueInfo.suficiente && estoqueInfo.proximoMin && " ⚠️ abaixo do mínimo"}
+                </div>
+              )}
             </div>
           )}
 
@@ -454,14 +544,25 @@ export default function OperadorHomePage() {
             </div>
           </div>
 
-          <div>
-            <label className="label">Descrição</label>
-            <input
-              className="input"
-              value={form.descricao}
-              onChange={(e) => setForm({ ...form, descricao: e.target.value })}
-              placeholder="Ex: Aplicação de calcário no talhão Norte"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="label">Descrição</label>
+              <input
+                className="input"
+                value={form.descricao}
+                onChange={(e) => setForm({ ...form, descricao: e.target.value })}
+                placeholder="Ex: Aplicação de calcário no talhão Norte"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="label">Nota Fiscal</label>
+              <input
+                className="input"
+                value={form.nota_fiscal}
+                onChange={(e) => setForm({ ...form, nota_fiscal: e.target.value })}
+                placeholder="Número da NF (opcional)"
+              />
+            </div>
           </div>
 
           <div>
@@ -473,6 +574,20 @@ export default function OperadorHomePage() {
               onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
             />
           </div>
+
+          {/* Aviso de certificacao (warn-only, nao bloqueia) */}
+          {avisoCertificacao && (
+            <div
+              className="p-3 rounded-ja text-sm"
+              style={{
+                background: "var(--warn-lt)",
+                border: "1px solid var(--warn)",
+                color: "var(--warn)",
+              }}
+            >
+              ⚠️ {avisoCertificacao}
+            </div>
+          )}
         </div>
       </Modal>
     </div>

@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cotacoes/sync",
+      "schedule": "0 11 * * 1-5"
+    }
+  ]
+}

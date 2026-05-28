@@ -94,7 +94,6 @@ const GROUPS: NavGroup[] = [
     icon: "⚙️",
     items: [
       { href: "/usuarios",          label: "Usuários",            icon: "👤" },
-      { href: "/offline",           label: "Fila Offline",        icon: "🔄" },
     ],
   },
   {

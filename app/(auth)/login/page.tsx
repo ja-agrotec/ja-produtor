@@ -24,6 +24,25 @@ export default function LoginPage() {
       }
       setLoading(false);
     } else {
+      // Detecta role pra redirecionar. Se for operador, vai pra PWA Operador.
+      try {
+        const sb = supabase;
+        const { data: user } = await sb.auth.getUser();
+        const authId = user?.user?.id;
+        if (authId) {
+          const r = await sb
+            .from("usuarios")
+            .select("role")
+            .eq("auth_id", authId)
+            .maybeSingle();
+          const role = r.data?.role;
+          toast.success("Bem-vindo de volta!");
+          router.push(role === "operador" ? "/operador" : "/home");
+          return;
+        }
+      } catch {
+        /* fallback abaixo */
+      }
       toast.success("Bem-vindo de volta!");
       router.push("/home");
     }

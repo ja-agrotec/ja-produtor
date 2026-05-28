@@ -4,7 +4,6 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { getSupabase } from "@/lib/supabase";
 import AppSidebar from "@/components/AppSidebar";
-import OfflineBanner from "@/components/OfflineBanner";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -48,7 +47,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex min-h-screen">
       <AppSidebar mobileOpen={menuMobileAberto} onClose={() => setMenuMobileAberto(false)} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <OfflineBanner />
         <header className="lg:hidden sticky top-0 z-30 bg-white border-b border-ja-brd flex items-center justify-between px-3 py-2 shadow-sm">
           <button
             onClick={() => setMenuMobileAberto(true)}

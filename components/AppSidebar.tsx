@@ -165,13 +165,12 @@ export default function AppSidebar({ mobileOpen = false, onClose }: Props) {
       {/* Logo header */}
       <div className="p-4 border-b" style={{ borderColor: "rgba(124,179,66,.12)" }}>
         <div className="flex items-center gap-3">
-          <div
-            className="rounded-xl flex items-center justify-center shrink-0"
-            style={{ width: 44, height: 44, background: "linear-gradient(135deg, #7CB342 0%, #8BC34A 100%)" }}
-          >
-            <span style={{ fontFamily: "var(--f2)", fontSize: 18, color: "#fff", fontWeight: 700, letterSpacing: 1 }}>
-              JA
-            </span>
+          <div className="relative overflow-hidden rounded-xl bg-white shrink-0" style={{ width: 44, height: 44 }}>
+            <img
+              src="/logo-ja-agrotec.png"
+              alt="JA Agrotec"
+              className="absolute inset-0 w-full h-full object-cover scale-[1.6]"
+            />
           </div>
           <div className="flex flex-col min-w-0">
             <span style={{ fontFamily: "var(--f2)", fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: 2, lineHeight: 1 }}>

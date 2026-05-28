@@ -36,13 +36,12 @@ export default function LoginPage() {
     >
       <div className="card w-full max-w-md">
         <div className="flex flex-col items-center mb-6">
-          <div
-            className="rounded-2xl flex items-center justify-center mb-3"
-            style={{ width: 84, height: 84, background: "linear-gradient(135deg, #7CB342 0%, #8BC34A 100%)" }}
-          >
-            <span style={{ fontFamily: "var(--f2)", fontSize: 38, color: "#fff", fontWeight: 700, letterSpacing: 2 }}>
-              JA
-            </span>
+          <div className="relative overflow-hidden rounded-2xl bg-white mb-3" style={{ width: 96, height: 96 }}>
+            <img
+              src="/logo-ja-agrotec.png"
+              alt="JA Agrotec"
+              className="absolute inset-0 w-full h-full object-cover scale-[1.6]"
+            />
           </div>
           <h1 className="font-display text-2xl text-center" style={{ color: "var(--dark)" }}>
             JA Agrotec

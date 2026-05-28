@@ -58,11 +58,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <span className="block w-5 h-0.5 bg-ja-dark"></span>
           </button>
           <div className="flex items-center gap-2">
-            <div
-              className="rounded-lg flex items-center justify-center"
-              style={{ width: 32, height: 32, background: "linear-gradient(135deg, #7CB342 0%, #8BC34A 100%)" }}
-            >
-              <span style={{ fontFamily: "var(--f2)", fontSize: 14, color: "#fff", fontWeight: 700 }}>JA</span>
+            <div className="relative overflow-hidden rounded-lg bg-white" style={{ width: 32, height: 32 }}>
+              <img
+                src="/logo-ja-agrotec.png"
+                alt="JA Agrotec"
+                className="absolute inset-0 w-full h-full object-cover scale-[1.6]"
+              />
             </div>
             <span className="font-display font-semibold text-sm">AGROTEC</span>
           </div>

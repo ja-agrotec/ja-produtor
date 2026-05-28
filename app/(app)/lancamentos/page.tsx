@@ -59,6 +59,33 @@ type FormState = {
   nota_fiscal: string;
 };
 
+// ============================================================
+// Mapeamento categoria_lancamento.nome -> aliases de categoria_insumo aceitas.
+// - Lista presente: categoria *espera* insumo. Filtra insumos pelos aliases.
+// - Chave ausente: categoria NAO usa insumo (combustivel, mao de obra,
+//   transporte, arrendamento, manutencao, etc.). Campo de insumo nao aparece.
+// Match e' fuzzy (case-insensitive, sem acentos, includes nos dois sentidos).
+// ============================================================
+const CATEGORIAS_COM_INSUMO: Record<string, string[]> = {
+  defensivos: ["defensivo", "herbicida", "fungicida", "inseticida", "acaricida", "nematicida", "bactericida", "agrotoxico"],
+  fertilizantes: ["fertilizante", "adubo", "calcario", "corretivo", "macronutriente", "micronutriente", "foliar"],
+  sementes: ["semente", "muda"],
+};
+
+function normalizarCat(s: string): string {
+  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+}
+
+function categoriaAceitaQuaisInsumos(nomeCatLanc: string): string[] | null {
+  return CATEGORIAS_COM_INSUMO[normalizarCat(nomeCatLanc)] || null;
+}
+
+function insumoCompativel(insCat: string | null | undefined, aceitas: string[]): boolean {
+  if (!insCat) return true; // legacy: insumo sem categoria fica disponivel
+  const ic = normalizarCat(insCat);
+  return aceitas.some((a) => ic.includes(a) || a.includes(ic));
+}
+
 function novoForm(): FormState {
   return {
     fazenda_id: "",
@@ -271,20 +298,26 @@ export default function LancamentosPage() {
     });
   }, [insumos, form.fazenda_id]);
 
-  // Insumos filtrados tambem pela categoria selecionada.
-  // Quando categoria esta presente, exige que `insumos.categoria` bata com
-  // `categorias_lancamento.nome` (case-insensitive). Insumos sem categoria
-  // cadastrada continuam disponiveis (legacy graceful).
+  // Insumos filtrados pela categoria de lancamento selecionada,
+  // usando o mapeamento categoria_lancamento.nome -> categorias_insumo aceitas.
+  // null significa "categoria nao usa insumo" (ex: combustivel, mao de obra).
   const insumosFiltrados = useMemo(() => {
     if (!form.categoria_id) return insumosFazenda;
     const cat = categorias.find((c) => c.id === form.categoria_id);
     if (!cat) return insumosFazenda;
-    const nomeCat = cat.nome.toLowerCase().trim();
-    return insumosFazenda.filter((i) => {
-      if (!i.categoria) return true;
-      return i.categoria.toLowerCase().trim() === nomeCat;
-    });
+    const aceitas = categoriaAceitaQuaisInsumos(cat.nome);
+    if (aceitas === null) return [];
+    return insumosFazenda.filter((i) => insumoCompativel(i.categoria, aceitas));
   }, [insumosFazenda, categorias, form.categoria_id]);
+
+  // True quando o campo de insumo deve aparecer (categoria nao escolhida
+  // ou categoria que esperam insumo)
+  const categoriaPrecisaInsumo = useMemo(() => {
+    if (!form.categoria_id) return true; // sem categoria selecionada ainda
+    const cat = categorias.find((c) => c.id === form.categoria_id);
+    if (!cat) return true;
+    return categoriaAceitaQuaisInsumos(cat.nome) !== null;
+  }, [categorias, form.categoria_id]);
 
   // Aviso de certificacao baseado em talhao + insumo
   useEffect(() => {
@@ -487,17 +520,20 @@ export default function LancamentosPage() {
   }
 
   // Auto-preenche tipo (despesa/receita) ao escolher categoria
-  // e reseta insumo se nao bate mais com a nova categoria
+  // e reseta insumo se nao bate mais com a nova categoria (ou se a categoria nao usa insumo)
   function onChangeCategoria(catId: string) {
     const cat = categorias.find((c) => c.id === catId);
     const novoTipo: TipoLancamento = cat?.tipo || form.tipo;
     let novoInsumo = form.insumo_id;
-    if (catId && novoInsumo) {
-      const ins = insumos.find((i) => i.id === novoInsumo);
-      const insCat = ins?.categoria?.toLowerCase().trim();
-      const catNome = cat?.nome.toLowerCase().trim();
-      const bate = !insCat || (catNome && insCat === catNome);
-      if (!bate) novoInsumo = "";
+    if (catId && cat) {
+      const aceitas = categoriaAceitaQuaisInsumos(cat.nome);
+      if (aceitas === null) {
+        // Categoria nao usa insumo (combustivel, mao de obra, etc.)
+        novoInsumo = "";
+      } else if (novoInsumo) {
+        const ins = insumos.find((i) => i.id === novoInsumo);
+        if (!insumoCompativel(ins?.categoria, aceitas)) novoInsumo = "";
+      }
     }
     setForm((f) => ({
       ...f,
@@ -854,6 +890,7 @@ export default function LancamentosPage() {
               ))}
             </select>
           </div>
+          {categoriaPrecisaInsumo && (
           <div>
             <label className="label">
               Insumo
@@ -878,6 +915,7 @@ export default function LancamentosPage() {
               </div>
             )}
           </div>
+          )}
           <div>
             <label className="label">Maquina</label>
             <select

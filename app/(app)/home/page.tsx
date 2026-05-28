@@ -15,7 +15,7 @@ import KpiCard from "@/components/ui/KpiCard";
 import EmptyState from "@/components/ui/EmptyState";
 import FazendaSelector from "@/components/ui/FazendaSelector";
 
-type CotacaoCultura = { cultura: string; preco: number | null; data: string | null };
+type CotacaoCultura = { cultura: string; preco: number | null; data: string | null; idadeDias: number | null };
 
 const DICAS_AGRONOMICAS = [
   "Monitoramento frequente de pragas reduz custos de controle em até 40%.",
@@ -110,7 +110,7 @@ export default function HomePage() {
     const filtroFaz = fazendaSel;
 
     // Tudo em paralelo
-    const [rFaz, rTal, rSaf, rIns, rVen, rLan] = await Promise.all([
+    const [rFaz, rTal, rSaf, rIns, rVen, rLan, rSafCult] = await Promise.all([
       sb.from("fazendas").select("id,nome,cidade,estado,area_total_ha").eq("ativo", true),
       filtroFaz
         ? sb.from("talhoes").select("id").eq("ativo", true).eq("fazenda_id", filtroFaz)
@@ -142,6 +142,10 @@ export default function HomePage() {
             .eq("status", "confirmado")
             .order("data_lancamento", { ascending: false })
             .limit(6),
+      // Culturas que a fazenda (ou todas) tem cadastradas nas safras
+      filtroFaz
+        ? sb.from("safras").select("cultura").eq("fazenda_id", filtroFaz)
+        : sb.from("safras").select("cultura"),
     ]);
 
     setFazendasAtivas(rFaz.data?.length || 0);
@@ -164,18 +168,53 @@ export default function HomePage() {
       ),
     );
 
-    // Cotações: último preço por cultura
+    // Cotacoes: TODAS as culturas que a fazenda cultiva (safras),
+    // com o ultimo preco praticado em vendas_graos por cultura.
     const vendas = (rVen.data || []) as VendaGraos[];
-    const porCultura: Record<string, CotacaoCultura> = {};
+    const culturasFazenda = Array.from(
+      new Set(
+        ((rSafCult.data || []) as Array<{ cultura: string | null }>)
+          .map((s) => (s.cultura || "").trim().toUpperCase())
+          .filter(Boolean),
+      ),
+    );
+
+    // Ultimo preco por cultura (filtra por fazenda se aplicavel)
+    const ultimoPrecoPorCultura: Record<string, { preco: number; data: string }> = {};
     vendas.forEach((v) => {
-      const c = (v.cultura || "").trim();
+      const c = (v.cultura || "").trim().toUpperCase();
       if (!c || !v.preco_saca) return;
       if (filtroFaz && v.fazenda_id !== filtroFaz) return;
-      if (!porCultura[c]) {
-        porCultura[c] = { cultura: c, preco: v.preco_saca, data: v.data_contrato || null };
+      const dataAtual = v.data_contrato || "";
+      const prev = ultimoPrecoPorCultura[c];
+      if (!prev || dataAtual > prev.data) {
+        ultimoPrecoPorCultura[c] = { preco: v.preco_saca, data: dataAtual };
       }
     });
-    setCotacoes(Object.values(porCultura).slice(0, 5));
+
+    const hojeISO = hoje();
+    const lista: CotacaoCultura[] = culturasFazenda.map((cult) => {
+      const ult = ultimoPrecoPorCultura[cult];
+      let idadeDias: number | null = null;
+      if (ult?.data) {
+        const d1 = new Date(ult.data + "T00:00:00").getTime();
+        const d2 = new Date(hojeISO + "T00:00:00").getTime();
+        idadeDias = Math.max(0, Math.round((d2 - d1) / 86400000));
+      }
+      return {
+        cultura: cult,
+        preco: ult?.preco ?? null,
+        data: ult?.data ?? null,
+        idadeDias,
+      };
+    });
+    // Ordena: com cotacao recente primeiro; sem cotacao no fim
+    lista.sort((a, b) => {
+      if (a.preco == null && b.preco != null) return 1;
+      if (a.preco != null && b.preco == null) return -1;
+      return (a.idadeDias ?? 9999) - (b.idadeDias ?? 9999);
+    });
+    setCotacoes(lista);
 
     setUltimosLanc((rLan.data || []) as Lancamento[]);
     setCarregando(false);
@@ -363,32 +402,56 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Cotações de hoje */}
+        {/* Cotações */}
         <div className="card">
-          <h3 style={{ marginBottom: 12 }}>📊 Cotações de hoje</h3>
+          <div className="flex items-start justify-between mb-3">
+            <h3 style={{ margin: 0 }}>📊 Cotações</h3>
+            <span className="text-xs" style={{ color: "var(--muted)" }} title="Baseado em vendas_graos.preco_saca">
+              Última venda registrada
+            </span>
+          </div>
           {cotacoes.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--muted)" }}>
-              Sem contratos recentes para extrair preço.
+              Cadastre uma safra para começar a acompanhar as cotações das suas culturas.
             </p>
           ) : (
             <div className="space-y-2">
-              {cotacoes.map((c) => (
-                <div
-                  key={c.cultura}
-                  className="flex items-center justify-between p-2 rounded-ja"
-                  style={{ background: "#f0f7eb" }}
-                >
-                  <div>
-                    <div className="font-semibold text-sm">{c.cultura}</div>
-                    <div className="text-xs" style={{ color: "var(--muted)" }}>
-                      Último contrato {fmtData(c.data)}
+              {cotacoes.map((c) => {
+                const sem = c.preco == null;
+                const isHoje = c.idadeDias === 0;
+                const recente = c.idadeDias != null && c.idadeDias <= 7;
+                const antigo = c.idadeDias != null && c.idadeDias > 30;
+                let badge: { label: string; cls: string } | null = null;
+                if (sem) badge = { label: "Sem registro", cls: "badge-neutral" };
+                else if (isHoje) badge = { label: "Hoje", cls: "badge-success" };
+                else if (recente) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-info" };
+                else if (antigo) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-warn" };
+                else if (c.idadeDias != null) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-neutral" };
+
+                return (
+                  <div
+                    key={c.cultura}
+                    className="flex items-center justify-between p-2 rounded-ja"
+                    style={{
+                      background: sem ? "var(--bg)" : "var(--green-bg)",
+                      opacity: sem ? 0.7 : 1,
+                    }}
+                  >
+                    <div>
+                      <div className="font-semibold text-sm flex items-center gap-2">
+                        {c.cultura}
+                        {badge && <span className={`badge ${badge.cls}`} style={{ fontSize: 9 }}>{badge.label}</span>}
+                      </div>
+                      <div className="text-xs" style={{ color: "var(--muted)" }}>
+                        {c.data ? `Última venda em ${fmtData(c.data)}` : "Nenhuma venda registrada ainda"}
+                      </div>
+                    </div>
+                    <div className="font-bold text-base" style={{ color: sem ? "var(--muted)" : "#2d7d32" }}>
+                      {sem ? "—" : `${fmtBRL(c.preco)}/sc`}
                     </div>
                   </div>
-                  <div className="font-bold text-base" style={{ color: "#2d7d32" }}>
-                    {fmtBRL(c.preco)}/sc
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

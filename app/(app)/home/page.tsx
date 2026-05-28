@@ -9,18 +9,13 @@ import { useAuth } from "@/lib/auth-context";
 import type { Fazenda, Insumo, Safra, Lancamento, VendaGraos } from "@/lib/types";
 import { fmtBRL, fmtBRLShort, fmtData, fmtInt, hoje } from "@/lib/format";
 import { getFazendaSelecionada } from "@/lib/utils";
+import { buscarClima, iconeWmo, nomeDiaCurto, type ClimaAtual, type DiaPrevisao } from "@/lib/clima";
 import PageHeader from "@/components/ui/PageHeader";
 import KpiCard from "@/components/ui/KpiCard";
 import EmptyState from "@/components/ui/EmptyState";
 import FazendaSelector from "@/components/ui/FazendaSelector";
 
 type CotacaoCultura = { cultura: string; preco: number | null; data: string | null };
-
-type ClimaInfo = {
-  temperatura: number | null;
-  windspeed: number | null;
-  weathercode: number | null;
-};
 
 const DICAS_AGRONOMICAS = [
   "Monitoramento frequente de pragas reduz custos de controle em até 40%.",
@@ -65,7 +60,8 @@ export default function HomePage() {
   // Widgets
   const [cotacoes, setCotacoes] = useState<CotacaoCultura[]>([]);
   const [ultimosLanc, setUltimosLanc] = useState<Lancamento[]>([]);
-  const [clima, setClima] = useState<ClimaInfo | null>(null);
+  const [clima, setClima] = useState<ClimaAtual | null>(null);
+  const [previsao, setPrevisao] = useState<DiaPrevisao[]>([]);
   const [cidadeClima, setCidadeClima] = useState<string>("");
   const [fazendasInfo, setFazendasInfo] = useState<
     Array<{ id: string; nome: string; cidade: string | null; estado: string | null; area_total_ha: number | null }>
@@ -185,69 +181,23 @@ export default function HomePage() {
     setCarregando(false);
   }
 
-  // Clima: pega cidade/estado da fazenda selecionada (ou da fazenda com maior
-  // area_total_ha quando "todas"); geocode via Open-Meteo Geocoding API;
-  // depois forecast. Cache simples em sessionStorage por cidade,estado.
+  // Clima: pega cidade da fazenda selecionada (ou maior area se "todas")
+  // e busca atual + previsao 5 dias via lib/clima.ts
   useEffect(() => {
     if (fazendasInfo.length === 0) return;
-
     (async () => {
-      // 1. Determina fazenda alvo
       let alvo = fazendaSel ? fazendasInfo.find((f) => f.id === fazendaSel) : null;
       if (!alvo) {
-        // "Todas" ou fazenda invalida -> escolhe a maior area
         alvo = [...fazendasInfo]
-          .filter((f) => f.cidade) // so as que tem cidade
-          .sort((a, b) => (Number(b.area_total_ha || 0)) - (Number(a.area_total_ha || 0)))[0];
+          .filter((f) => f.cidade)
+          .sort((a, b) => Number(b.area_total_ha || 0) - Number(a.area_total_ha || 0))[0];
       }
-      // Fallback: Brasilia se nada utilizavel
       const cidade = alvo?.cidade?.trim() || "Brasília";
       const estado = alvo?.estado?.trim() || "DF";
-
-      // 2. Geocoding (cache em sessionStorage)
-      const cacheKey = `geo_${cidade}_${estado}`;
-      let coords: { lat: number; lon: number } | null = null;
-      try {
-        const cached = sessionStorage.getItem(cacheKey);
-        if (cached) coords = JSON.parse(cached);
-      } catch { /* ignore */ }
-
-      if (!coords) {
-        try {
-          const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade)}&country=BR&count=1&language=pt`;
-          const r = await fetch(url);
-          const data = await r.json();
-          const first = data?.results?.[0];
-          if (first?.latitude && first?.longitude) {
-            coords = { lat: first.latitude, lon: first.longitude };
-            try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch { /* ignore */ }
-          }
-        } catch {
-          coords = null;
-        }
-      }
-      // Fallback final: Brasilia
-      if (!coords) coords = { lat: -15.78, lon: -47.92 };
-
-      setCidadeClima(cidade);
-
-      // 3. Forecast
-      try {
-        const r = await fetch(
-          `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&timezone=America%2FSao_Paulo`,
-        );
-        const data = await r.json();
-        const cw = data?.current_weather;
-        if (cw) {
-          setClima({
-            temperatura: cw.temperature ?? null,
-            windspeed: cw.windspeed ?? null,
-            weathercode: cw.weathercode ?? null,
-          });
-        }
-      } catch {
-        setClima(null);
-      }
+      const c = await buscarClima(cidade, estado, 5);
+      setCidadeClima(c.cidade);
+      setClima(c.atual);
+      setPrevisao(c.previsao);
     })();
   }, [fazendaSel, fazendasInfo]);
 
@@ -280,7 +230,7 @@ export default function HomePage() {
           <FazendaSelector onChange={(id) => setFazendaSel(id)} />
           {clima && (
             <div className="flex items-center gap-3 mt-2">
-              <span style={{ fontSize: 42 }}>{iconeClima(clima.weathercode)}</span>
+              <span style={{ fontSize: 42 }}>{iconeWmo(clima.weathercode)}</span>
               <div>
                 <div style={{ fontSize: 28, fontWeight: 700, lineHeight: 1 }}>
                   {clima.temperatura !== null ? `${Math.round(clima.temperatura)}°C` : "—"}
@@ -293,6 +243,56 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Previsao 5 dias */}
+      {previsao.length > 0 && (
+        <div className="card">
+          <div className="flex items-center justify-between mb-3">
+            <h3 style={{ margin: 0 }}>Previsão · {cidadeClima || "—"}</h3>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              Próximos {previsao.length} dia(s)
+            </span>
+          </div>
+          <div
+            className="grid gap-2"
+            style={{ gridTemplateColumns: `repeat(${previsao.length}, minmax(0, 1fr))` }}
+          >
+            {previsao.map((p) => {
+              const choveuMuito = p.chuvaMm >= 5;
+              const ventoForte = p.ventoMaxKmh >= 30;
+              return (
+                <div
+                  key={p.data}
+                  className="flex flex-col items-center text-center rounded-ja py-2 px-1"
+                  style={{
+                    background: choveuMuito ? "var(--info-lt)" : "var(--green-bg)",
+                    border: ventoForte ? "1px solid var(--warn)" : "1px solid var(--brd)",
+                  }}
+                >
+                  <div className="text-caps" style={{ fontSize: 10 }}>
+                    {nomeDiaCurto(p.data)}
+                  </div>
+                  <div style={{ fontSize: 28, lineHeight: 1, margin: "4px 0" }}>
+                    {iconeWmo(p.weathercode)}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>
+                    {Math.round(p.tempMax)}°
+                    <span style={{ color: "var(--muted)", fontWeight: 500, marginLeft: 4 }}>
+                      / {Math.round(p.tempMin)}°
+                    </span>
+                  </div>
+                  <div className="text-xs mt-1" style={{ color: choveuMuito ? "var(--info)" : "var(--muted)" }}>
+                    💧 {p.chuvaMm > 0 ? `${p.chuvaMm.toFixed(1)}mm` : "—"}
+                  </div>
+                  <div className="text-xs" style={{ color: ventoForte ? "var(--warn)" : "var(--muted)" }}>
+                    💨 {Math.round(p.ventoMaxKmh)} km/h
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* KPI CARDS */}
       <div className="grid-cards">

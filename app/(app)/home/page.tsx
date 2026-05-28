@@ -66,6 +66,10 @@ export default function HomePage() {
   const [cotacoes, setCotacoes] = useState<CotacaoCultura[]>([]);
   const [ultimosLanc, setUltimosLanc] = useState<Lancamento[]>([]);
   const [clima, setClima] = useState<ClimaInfo | null>(null);
+  const [cidadeClima, setCidadeClima] = useState<string>("");
+  const [fazendasInfo, setFazendasInfo] = useState<
+    Array<{ id: string; nome: string; cidade: string | null; estado: string | null; area_total_ha: number | null }>
+  >([]);
   const [lembrete, setLembrete] = useState("");
 
   const dica = useMemo(
@@ -111,7 +115,7 @@ export default function HomePage() {
 
     // Tudo em paralelo
     const [rFaz, rTal, rSaf, rIns, rVen, rLan] = await Promise.all([
-      sb.from("fazendas").select("id").eq("ativo", true),
+      sb.from("fazendas").select("id,nome,cidade,estado,area_total_ha").eq("ativo", true),
       filtroFaz
         ? sb.from("talhoes").select("id").eq("ativo", true).eq("fazenda_id", filtroFaz)
         : sb.from("talhoes").select("id").eq("ativo", true),
@@ -145,6 +149,7 @@ export default function HomePage() {
     ]);
 
     setFazendasAtivas(rFaz.data?.length || 0);
+    setFazendasInfo((rFaz.data || []) as any[]);
     setTalhoesAtivos(rTal.data?.length || 0);
     setSafrasAbertas(rSaf.data?.length || 0);
 
@@ -180,12 +185,56 @@ export default function HomePage() {
     setCarregando(false);
   }
 
-  // Open-Meteo (coordenadas fixas de Brasília — simplificação)
+  // Clima: pega cidade/estado da fazenda selecionada (ou da fazenda com maior
+  // area_total_ha quando "todas"); geocode via Open-Meteo Geocoding API;
+  // depois forecast. Cache simples em sessionStorage por cidade,estado.
   useEffect(() => {
+    if (fazendasInfo.length === 0) return;
+
     (async () => {
+      // 1. Determina fazenda alvo
+      let alvo = fazendaSel ? fazendasInfo.find((f) => f.id === fazendaSel) : null;
+      if (!alvo) {
+        // "Todas" ou fazenda invalida -> escolhe a maior area
+        alvo = [...fazendasInfo]
+          .filter((f) => f.cidade) // so as que tem cidade
+          .sort((a, b) => (Number(b.area_total_ha || 0)) - (Number(a.area_total_ha || 0)))[0];
+      }
+      // Fallback: Brasilia se nada utilizavel
+      const cidade = alvo?.cidade?.trim() || "Brasília";
+      const estado = alvo?.estado?.trim() || "DF";
+
+      // 2. Geocoding (cache em sessionStorage)
+      const cacheKey = `geo_${cidade}_${estado}`;
+      let coords: { lat: number; lon: number } | null = null;
+      try {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) coords = JSON.parse(cached);
+      } catch { /* ignore */ }
+
+      if (!coords) {
+        try {
+          const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cidade)}&country=BR&count=1&language=pt`;
+          const r = await fetch(url);
+          const data = await r.json();
+          const first = data?.results?.[0];
+          if (first?.latitude && first?.longitude) {
+            coords = { lat: first.latitude, lon: first.longitude };
+            try { sessionStorage.setItem(cacheKey, JSON.stringify(coords)); } catch { /* ignore */ }
+          }
+        } catch {
+          coords = null;
+        }
+      }
+      // Fallback final: Brasilia
+      if (!coords) coords = { lat: -15.78, lon: -47.92 };
+
+      setCidadeClima(cidade);
+
+      // 3. Forecast
       try {
         const r = await fetch(
-          "https://api.open-meteo.com/v1/forecast?latitude=-15.78&longitude=-47.92&current_weather=true&timezone=America%2FSao_Paulo",
+          `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lon}&current_weather=true&timezone=America%2FSao_Paulo`,
         );
         const data = await r.json();
         const cw = data?.current_weather;
@@ -200,7 +249,7 @@ export default function HomePage() {
         setClima(null);
       }
     })();
-  }, []);
+  }, [fazendaSel, fazendasInfo]);
 
   const nomeUsuario =
     (user?.user_metadata?.nome as string | undefined) ||
@@ -237,7 +286,7 @@ export default function HomePage() {
                   {clima.temperatura !== null ? `${Math.round(clima.temperatura)}°C` : "—"}
                 </div>
                 <div className="text-xs opacity-80">
-                  Brasília · 💨 {clima.windspeed ? Math.round(clima.windspeed) : 0} km/h
+                  {cidadeClima || "—"} · 💨 {clima.windspeed ? Math.round(clima.windspeed) : 0} km/h
                 </div>
               </div>
             </div>

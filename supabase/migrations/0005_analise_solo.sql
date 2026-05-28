@@ -21,7 +21,8 @@ CREATE INDEX IF NOT EXISTS idx_analise_solo_data    ON analise_solo(data_analise
 
 ALTER TABLE analise_solo ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "analise_solo_acesso_fazenda" ON analise_solo
+DROP POLICY IF EXISTS "analise_solo_acesso_fazenda" ON analise_solo;
+CREATE POLICY "analise_solo_acesso_fazenda" ON analise_solo
   FOR ALL USING (
     get_user_role() = 'admin'
     OR fazenda_id = get_user_fazenda()

@@ -19,7 +19,8 @@ CREATE INDEX IF NOT EXISTS idx_certificacao_checklists_tipo    ON certificacao_c
 
 ALTER TABLE certificacao_checklists ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "cert_checklists_acesso_fazenda" ON certificacao_checklists
+DROP POLICY IF EXISTS "cert_checklists_acesso_fazenda" ON certificacao_checklists;
+CREATE POLICY "cert_checklists_acesso_fazenda" ON certificacao_checklists
   FOR ALL USING (
     get_user_role() = 'admin'
     OR fazenda_id = get_user_fazenda()

@@ -24,7 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_despesas_fixas_ativo   ON despesas_fixas(ativo);
 
 ALTER TABLE despesas_fixas ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "despesas_fixas_acesso_fazenda" ON despesas_fixas
+DROP POLICY IF EXISTS "despesas_fixas_acesso_fazenda" ON despesas_fixas;
+CREATE POLICY "despesas_fixas_acesso_fazenda" ON despesas_fixas
   FOR ALL USING (
     get_user_role() = 'admin'
     OR fazenda_id = get_user_fazenda()

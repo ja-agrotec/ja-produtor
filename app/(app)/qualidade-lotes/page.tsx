@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import type { Fazenda, QualidadeRegistro, Safra, Talhao } from "@/lib/types";
-import { fmt, fmtData, hoje } from "@/lib/format";
+import { fmtData, hoje } from "@/lib/format";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
@@ -209,11 +209,11 @@ export default function QualidadeLotesPage() {
     setForm({
       fazenda_id: r.fazenda_id || "",
       safra_id: r.safra_id || "",
-      talhao_id: r.talhao_id || dq._talhao_id || "",
+      talhao_id: String(dq._talhao_id || ""),
       cultura: r.cultura || "cafe",
       data_registro: r.data_registro || hoje(),
       lote_ref: String(dq._lote_ref || ""),
-      responsavel: String(dq._responsavel || r.responsavel || ""),
+      responsavel: String(dq._responsavel || ""),
       observacoes: r.observacoes || "",
       dados: dadosLimpos,
     });
@@ -239,14 +239,14 @@ export default function QualidadeLotesPage() {
     if (form.talhao_id) dq._talhao_id = form.talhao_id;
     if (form.responsavel) dq._responsavel = form.responsavel;
 
+    // qualidade_registro nao tem colunas talhao_id nem responsavel no banco real.
+    // Persistimos esses dois dentro de dados_qualidade como _talhao_id / _responsavel.
     const payload = {
       fazenda_id: form.fazenda_id,
       safra_id: form.safra_id || null,
-      talhao_id: form.talhao_id || null,
       cultura: form.cultura,
       data_registro: form.data_registro,
       dados_qualidade: dq,
-      responsavel: form.responsavel || null,
       observacoes: form.observacoes || null,
     };
 

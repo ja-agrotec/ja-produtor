@@ -102,7 +102,7 @@ export default function DocumentosPage() {
       const sb = getSupabase();
       const [f, d] = await Promise.all([
         sb.from("fazendas").select("*").eq("ativo", true).order("nome"),
-        sb.from("documentos").select("*, fazendas(nome)").order("criado_em", { ascending: false }),
+        sb.from("documentos").select("*, fazendas(nome)").order("created_at", { ascending: false }),
       ]);
       if (f.error) throw f.error;
       if (d.error) throw d.error;
@@ -124,7 +124,7 @@ export default function DocumentosPage() {
       if (filtroModulo && d.modulo_origem !== filtroModulo) return false;
       if (filtroFazenda && d.fazenda_id !== filtroFazenda) return false;
       if (termo) {
-        const hay = `${d.nome_arquivo} ${d.entidade_descricao || ""} ${d.observacoes || ""}`.toLowerCase();
+        const hay = `${d.nome_arquivo} ${d.entidade_descricao || ""} ${d.descricao || ""}`.toLowerCase();
         if (!hay.includes(termo)) return false;
       }
       return true;
@@ -135,9 +135,12 @@ export default function DocumentosPage() {
     if (!excluirDoc) return;
     try {
       const sb = getSupabase();
-      // Hard delete: remove storage + linha
-      if (excluirDoc.storage_path) {
-        await sb.storage.from(BUCKET).remove([excluirDoc.storage_path]);
+      // Hard delete: remove storage + linha. O schema nao tem storage_path
+      // dedicado; derivamos do url_arquivo (parte final apos /documentos/).
+      const url = excluirDoc.url_arquivo || "";
+      const m = url.match(/\/documentos\/(.+)$/);
+      if (m && m[1]) {
+        await sb.storage.from(BUCKET).remove([decodeURIComponent(m[1])]);
       }
       const r = await sb.from("documentos").delete().eq("id", excluirDoc.id);
       if (r.error) throw r.error;
@@ -283,10 +286,10 @@ export default function DocumentosPage() {
                     <td><span className="badge badge-info">{t.label}</span></td>
                     <td>{getModuloLabel(d.modulo_origem)}</td>
                     <td>{d.fazendas?.nome || "—"}</td>
-                    <td>{fmtData(d.criado_em)}</td>
+                    <td>{fmtData(d.created_at)}</td>
                     <td onClick={(e) => e.stopPropagation()}>
-                      {d.url && (
-                        <a className="btn-ghost" href={d.url} target="_blank" rel="noopener noreferrer">Abrir</a>
+                      {d.url_arquivo && (
+                        <a className="btn-ghost" href={d.url_arquivo} target="_blank" rel="noopener noreferrer">Abrir</a>
                       )}
                     </td>
                   </tr>
@@ -335,9 +338,9 @@ function CartaoGrid({ doc, onClick }: { doc: DocComFazenda; onClick: () => void 
   const isImg = ehImagem(doc.nome_arquivo);
   return (
     <div className="card cursor-pointer hover:shadow-ja-lg transition-all" onClick={onClick}>
-      {isImg && doc.url ? (
+      {isImg && doc.url_arquivo ? (
         <img
-          src={doc.url}
+          src={doc.url_arquivo}
           alt={doc.nome_arquivo}
           loading="lazy"
           style={{
@@ -357,7 +360,7 @@ function CartaoGrid({ doc, onClick }: { doc: DocComFazenda; onClick: () => void 
         {doc.nome_arquivo}
       </div>
       <div className="text-xs mt-1" style={{ color: "var(--muted)" }}>
-        {fmtData(doc.criado_em)}
+        {fmtData(doc.created_at)}
       </div>
       <div className="mt-2 flex gap-1 flex-wrap">
         <span className="badge badge-info">{t.icone} {t.label}</span>
@@ -381,7 +384,7 @@ function UploadModal({
   const [modulo, setModulo] = useState("");
   const [fazendaId, setFazendaId] = useState("");
   const [entidade, setEntidade] = useState("");
-  const [observacoes, setObservacoes] = useState("");
+  const [descricao, setDescricao] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -405,11 +408,12 @@ function UploadModal({
         fazenda_id: fazendaId || null,
         tipo_documento: tipo,
         nome_arquivo: arquivo.name,
-        storage_path: path,
-        url: pub.data.publicUrl,
+        url_arquivo: pub.data.publicUrl,
+        tamanho_bytes: arquivo.size,
+        mime_type: arquivo.type || null,
         modulo_origem: modulo || null,
         entidade_descricao: entidade || null,
-        observacoes: observacoes || null,
+        descricao: descricao || null,
       };
       const r = await sb.from("documentos").insert(payload);
       if (r.error) {
@@ -522,12 +526,12 @@ function UploadModal({
           />
         </div>
         <div className="sm:col-span-2">
-          <label className="label">Observações</label>
+          <label className="label">Descrição</label>
           <textarea
             className="input"
             rows={3}
-            value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
           />
         </div>
       </div>
@@ -553,10 +557,10 @@ function PreviewModal({
       larguraMax={780}
       rodape={
         <>
-          {doc.url && (
+          {doc.url_arquivo && (
             <a
               className="btn-secondary"
-              href={doc.url}
+              href={doc.url_arquivo}
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -569,18 +573,18 @@ function PreviewModal({
       }
     >
       <div className="mb-4">
-        {isImg && doc.url ? (
+        {isImg && doc.url_arquivo ? (
           <img
-            src={doc.url}
+            src={doc.url_arquivo}
             alt={doc.nome_arquivo}
             style={{
               width: "100%", maxHeight: 400, objectFit: "contain",
               borderRadius: 8,
             }}
           />
-        ) : isPdf && doc.url ? (
+        ) : isPdf && doc.url_arquivo ? (
           <iframe
-            src={doc.url}
+            src={doc.url_arquivo}
             style={{ width: "100%", height: 500, border: "none", borderRadius: 8 }}
             title={doc.nome_arquivo}
           />
@@ -609,7 +613,7 @@ function PreviewModal({
         </div>
         <div>
           <div className="text-caps">Data</div>
-          <div>{fmtData(doc.criado_em)}</div>
+          <div>{fmtData(doc.created_at)}</div>
         </div>
         {doc.entidade_descricao && (
           <div className="col-span-2">
@@ -617,10 +621,10 @@ function PreviewModal({
             <div>{doc.entidade_descricao}</div>
           </div>
         )}
-        {doc.observacoes && (
+        {doc.descricao && (
           <div className="col-span-2">
             <div className="text-caps">Observações</div>
-            <div>{doc.observacoes}</div>
+            <div>{doc.descricao}</div>
           </div>
         )}
       </div>
@@ -676,11 +680,11 @@ function DossieModal({ docs, onClose }: { docs: DocComFazenda[]; onClose: () => 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div className="text-sm font-semibold truncate">{d.nome_arquivo}</div>
                   <div className="text-xs" style={{ color: "var(--muted)" }}>
-                    {getTipoInfo(d.tipo_documento).label} · {fmtData(d.criado_em)}
+                    {getTipoInfo(d.tipo_documento).label} · {fmtData(d.created_at)}
                   </div>
                 </div>
-                {d.url && (
-                  <a className="btn-ghost" href={d.url} target="_blank" rel="noopener noreferrer">
+                {d.url_arquivo && (
+                  <a className="btn-ghost" href={d.url_arquivo} target="_blank" rel="noopener noreferrer">
                     Abrir
                   </a>
                 )}

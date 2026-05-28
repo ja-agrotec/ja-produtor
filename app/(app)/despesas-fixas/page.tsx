@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { DespesaFixa, Fazenda } from "@/lib/types";
+import type { DespesaFixa, Fazenda, Periodicidade } from "@/lib/types";
 import { fmtBRL, hoje } from "@/lib/format";
 import { DEBOUNCE_MS, debounce } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
@@ -13,14 +13,12 @@ import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import FazendaSelector from "@/components/ui/FazendaSelector";
 
-type Periodicidade = "mensal" | "bimestral" | "trimestral" | "semestral" | "anual";
-
-const PERIODICIDADES: { v: Periodicidade; l: string; meses: number }[] = [
-  { v: "mensal", l: "Mensal", meses: 1 },
-  { v: "bimestral", l: "Bimestral", meses: 2 },
-  { v: "trimestral", l: "Trimestral", meses: 3 },
-  { v: "semestral", l: "Semestral", meses: 6 },
-  { v: "anual", l: "Anual", meses: 12 },
+const PERIODICIDADES: { v: Periodicidade; l: string }[] = [
+  { v: "mensal",     l: "Mensal" },
+  { v: "bimestral",  l: "Bimestral" },
+  { v: "trimestral", l: "Trimestral" },
+  { v: "semestral",  l: "Semestral" },
+  { v: "anual",      l: "Anual" },
 ];
 
 const CATEGORIAS = [
@@ -32,24 +30,16 @@ const CATEGORIAS = [
 
 type DespesaComFazenda = DespesaFixa & { fazendas?: { nome: string } | null };
 
-function mesesDe(p: Periodicidade): number {
-  return PERIODICIDADES.find((x) => x.v === p)?.meses || 1;
-}
-
-function valorMensalEquiv(d: DespesaFixa): number {
-  return Number(d.valor || 0) / mesesDe(d.periodicidade);
-}
-
 const FORM_INICIAL = {
-  id: "" as string | null,
+  id: null as string | null,
   nome: "",
   categoria: "Internet",
-  fazenda_id: "" as string | null,
-  valor: 0,
+  fazenda_id: null as string | null,
+  valor_mensal: 0,
   periodicidade: "mensal" as Periodicidade,
   data_inicio: hoje(),
-  data_fim: "" as string | null,
-  observacoes: "",
+  data_fim: "" as string,
+  descricao: "",
   ativo: true,
 };
 
@@ -112,7 +102,7 @@ export default function DespesasFixasPage() {
   }, [itens, filtroFazenda, filtroPeriodicidade, busca]);
 
   const totalMensal = useMemo(
-    () => filtrados.reduce((a, b) => a + valorMensalEquiv(b), 0),
+    () => filtrados.reduce((a, b) => a + Number(b.valor_mensal || 0), 0),
     [filtrados],
   );
   const totalAnual = totalMensal * 12;
@@ -127,12 +117,12 @@ export default function DespesasFixasPage() {
       id: d.id,
       nome: d.nome,
       categoria: d.categoria || "Internet",
-      fazenda_id: d.fazenda_id || "",
-      valor: Number(d.valor || 0),
+      fazenda_id: d.fazenda_id || null,
+      valor_mensal: Number(d.valor_mensal || 0),
       periodicidade: d.periodicidade,
       data_inicio: d.data_inicio || hoje(),
       data_fim: d.data_fim || "",
-      observacoes: d.observacoes || "",
+      descricao: d.descricao || "",
       ativo: d.ativo !== false,
     });
     setModalAberto(true);
@@ -140,7 +130,10 @@ export default function DespesasFixasPage() {
 
   async function salvar() {
     if (!form.nome.trim()) { toast.error("Informe o nome."); return; }
-    if (!(Number(form.valor) > 0)) { toast.error("Valor deve ser maior que zero."); return; }
+    if (!(Number(form.valor_mensal) > 0)) {
+      toast.error("Valor mensal deve ser maior que zero.");
+      return;
+    }
     setSalvando(true);
     try {
       const sb = getSupabase();
@@ -148,11 +141,11 @@ export default function DespesasFixasPage() {
         nome: form.nome.trim(),
         categoria: form.categoria || null,
         fazenda_id: form.fazenda_id || null,
-        valor: Number(form.valor),
+        valor_mensal: Number(form.valor_mensal),
         periodicidade: form.periodicidade,
         data_inicio: form.data_inicio || null,
         data_fim: form.data_fim || null,
-        observacoes: form.observacoes || null,
+        descricao: form.descricao || null,
         ativo: form.ativo,
       };
       if (form.id) {
@@ -177,7 +170,6 @@ export default function DespesasFixasPage() {
     if (!excluir) return;
     try {
       const sb = getSupabase();
-      // Soft delete
       const r = await sb.from("despesas_fixas").update({ ativo: false }).eq("id", excluir.id);
       if (r.error) throw r.error;
       toast.success("Despesa removida.");
@@ -192,7 +184,7 @@ export default function DespesasFixasPage() {
     <div>
       <PageHeader
         titulo="Despesas Fixas"
-        subtitulo="Custos recorrentes da operação — equivalente mensal calculado automaticamente"
+        subtitulo="Custos recorrentes da operação — valor mensal já normalizado"
         icone="💸"
         acoes={
           <>
@@ -204,7 +196,7 @@ export default function DespesasFixasPage() {
 
       <div className="grid-cards mb-6">
         <KpiCard rotulo="Itens" valor={String(filtrados.length)} icone="📋" accent="blue" />
-        <KpiCard rotulo="Total/mês (equiv.)" valor={fmtBRL(totalMensal)} icone="📅" accent="green" />
+        <KpiCard rotulo="Total/mês" valor={fmtBRL(totalMensal)} icone="📅" accent="green" />
         <KpiCard rotulo="Total/ano" valor={fmtBRL(totalAnual)} icone="📈" accent="purple" />
       </div>
 
@@ -262,9 +254,8 @@ export default function DespesasFixasPage() {
                 <th>Nome</th>
                 <th>Categoria</th>
                 <th>Fazenda</th>
-                <th style={{ textAlign: "right" }}>Valor</th>
                 <th>Período</th>
-                <th style={{ textAlign: "right" }}>Equiv/mês</th>
+                <th style={{ textAlign: "right" }}>Valor mensal</th>
                 <th style={{ textAlign: "right" }}>Ações</th>
               </tr>
             </thead>
@@ -276,10 +267,9 @@ export default function DespesasFixasPage() {
                     <td><strong>{o.nome}</strong></td>
                     <td><span className="badge badge-neutral">{o.categoria || "—"}</span></td>
                     <td>{o.fazendas?.nome || "Todas"}</td>
-                    <td style={{ textAlign: "right" }}>{fmtBRL(Number(o.valor || 0))}</td>
                     <td>{per.l}</td>
                     <td style={{ textAlign: "right", fontWeight: 600 }}>
-                      {fmtBRL(valorMensalEquiv(o))}
+                      {fmtBRL(Number(o.valor_mensal || 0))}
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <button className="btn-ghost" onClick={() => abrirEditar(o)}>Editar</button>
@@ -339,14 +329,14 @@ export default function DespesasFixasPage() {
             </select>
           </div>
           <div>
-            <label className="label">Valor (R$) *</label>
+            <label className="label">Valor mensal (R$) *</label>
             <input
               type="number"
               step="0.01"
               min="0"
               className="input"
-              value={form.valor || ""}
-              onChange={(e) => setForm({ ...form, valor: parseFloat(e.target.value) || 0 })}
+              value={form.valor_mensal || ""}
+              onChange={(e) => setForm({ ...form, valor_mensal: parseFloat(e.target.value) || 0 })}
             />
           </div>
           <div>
@@ -378,12 +368,12 @@ export default function DespesasFixasPage() {
             />
           </div>
           <div className="sm:col-span-2">
-            <label className="label">Observações</label>
+            <label className="label">Descrição</label>
             <textarea
               className="input"
               rows={2}
-              value={form.observacoes}
-              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+              value={form.descricao}
+              onChange={(e) => setForm({ ...form, descricao: e.target.value })}
             />
           </div>
         </div>
@@ -392,8 +382,8 @@ export default function DespesasFixasPage() {
           className="mt-3 p-3 rounded-ja text-xs"
           style={{ background: "var(--green-bg)", color: "var(--muted)" }}
         >
-          <strong>Equivalente mensal:</strong>{" "}
-          {fmtBRL(Number(form.valor || 0) / mesesDe(form.periodicidade))}
+          <strong>Resumo anual:</strong>{" "}
+          {fmtBRL(Number(form.valor_mensal || 0) * 12)}
         </div>
       </Modal>
 

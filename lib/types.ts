@@ -1,5 +1,7 @@
 // Tipos do dominio JA Agrotec - Modulo Produtor
-// Espelham as tabelas Supabase (PT-BR, snake_case)
+// Espelham as tabelas Supabase do projeto ja-prodcoop (gohoqgctcqltorfeohom).
+// Atencao: mistura snake_case PT (criado_em/atualizado_em) e EN (created_at/updated_at)
+// porque a base foi criada em fases. Mantenha o nome real da coluna em cada tabela.
 
 export type Role = "admin" | "gerente" | "operador" | "visualizador";
 export type StatusSafra = "planejamento" | "aberta" | "encerrada" | "cancelada";
@@ -11,6 +13,8 @@ export type TipoContratoVenda =
   | "disponivel" | "forward" | "troca" | "fixacao" | "cbot" | "exportacao";
 export type StatusVenda = "aberto" | "parcialmente_entregue" | "entregue" | "cancelado";
 export type TipoManutencao = "preventiva" | "corretiva" | "revisao";
+export type StatusChecklistItem = "pendente" | "ok" | "nao_conforme" | "nao_aplicavel";
+export type Periodicidade = "mensal" | "bimestral" | "trimestral" | "semestral" | "anual";
 
 export interface Fazenda {
   id: string;
@@ -56,6 +60,8 @@ export interface Talhao {
   coordenadas?: string | null;
   observacoes?: string | null;
   segue_certificacao?: boolean | null;
+  producao_sc?: number | null;
+  safra_id?: string | null;
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;
@@ -103,6 +109,16 @@ export interface Insumo {
   preco_unitario?: number | null;
   fazenda_id?: string | null;
   certificacao_permitida?: boolean | null;
+  tipo?: string | null;
+  modo_aplicacao?: string | null;
+  culturas?: string[] | null;
+  dose_recomendada?: string | null;
+  periodo_aplicacao?: string | null;
+  intervalo_seguranca?: number | null;
+  formulacao?: string | null;
+  classe_toxicologica?: string | null;
+  observacoes?: string | null;
+  global?: boolean | null;
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;
@@ -111,7 +127,6 @@ export interface Insumo {
 export interface Maquina {
   id: string;
   fazenda_id?: string | null;
-  fazenda_atual_id?: string | null;
   nome: string;
   tipo?: string | null;
   marca?: string | null;
@@ -124,6 +139,11 @@ export interface Maquina {
   proxima_manutencao_h?: number | null;
   status: StatusMaquina;
   observacoes?: string | null;
+  valor_aquisicao?: number | null;
+  ano_aquisicao?: number | null;
+  vida_util_anos?: number | null;
+  valor_residual?: number | null;
+  custo_hora?: number | null;
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;
@@ -194,6 +214,8 @@ export interface VendaGraos {
   tipo_contrato: TipoContratoVenda;
   quantidade_sc: number;
   preco_saca?: number | null;
+  moeda?: string | null;
+  cotacao_dolar?: number | null;
   data_contrato?: string | null;
   data_entrega?: string | null;
   comprador?: string | null;
@@ -209,26 +231,32 @@ export interface VendaGraos {
 export interface EntregaGraos {
   id: string;
   venda_id: string;
+  fazenda_id?: string | null;
   talhao_id?: string | null;
-  quantidade_sc: number;
   data_entrega?: string | null;
+  quantidade_sc: number;
+  preco_saca?: number | null;
+  peso_bruto_kg?: number | null;
+  umidade_pct?: number | null;
+  impureza_pct?: number | null;
   nota_fiscal?: string | null;
+  transportadora?: string | null;
   observacoes?: string | null;
   criado_em: string;
 }
 
+// Sem talhao_id, sem responsavel, sem atualizado_em (banco nao tem).
+// Workaround: armazenar talhao_id e responsavel dentro de dados_qualidade
+// como _talhao_id e _responsavel.
 export interface QualidadeRegistro {
   id: string;
   fazenda_id: string;
   safra_id?: string | null;
-  talhao_id?: string | null;
   cultura: string;
   data_registro: string;
   dados_qualidade: any;
   observacoes?: string | null;
-  responsavel?: string | null;
   criado_em: string;
-  atualizado_em: string;
 }
 
 export interface LancamentoOffline {
@@ -242,29 +270,72 @@ export interface LancamentoOffline {
   sincronizado_em?: string | null;
 }
 
+// documentos usa created_at/updated_at (snake_case ingles)
 export interface Documento {
   id: string;
-  fazenda_id?: string | null;
-  tipo_documento: string;
+  created_at: string;
+  updated_at: string;
   nome_arquivo: string;
-  storage_path?: string | null;
-  url?: string | null;
+  url_arquivo?: string | null;
+  tamanho_bytes?: number | null;
+  mime_type?: string | null;
+  tipo_documento: string;
+  descricao?: string | null;
+  destaque?: boolean | null;
+  versao?: number | null;
   modulo_origem?: string | null;
+  entidade_id?: string | null;
   entidade_descricao?: string | null;
-  observacoes?: string | null;
-  criado_em: string;
+  usuario_id?: string | null;
+  fazenda_id?: string | null;
+  safra_id?: string | null;
+  venda_id?: string | null;
 }
 
+// analise_solo usa created_at/updated_at (snake_case ingles) e tem schema rico
+export interface AnaliseSolo {
+  id: string;
+  fazenda_id: string;
+  talhao_id?: string | null;
+  data_coleta: string;
+  laboratorio?: string | null;
+  numero_amostra?: string | null;
+  profundidade?: string | null;
+  cultura_referencia?: string | null;
+  resultados: any;
+  recomendacoes?: string | null;
+  status?: string | null;
+  observacoes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// certificacao_checklists: 1 row POR ITEM (nao por checklist).
+// Cada item de cada tipo de certificacao em uma fazenda eh uma linha.
+export interface CertificacaoChecklistItem {
+  id: string;
+  fazenda_id: string;
+  tipo_certificacao: TipoCertificacao;
+  item_id: string;
+  status: StatusChecklistItem;
+  observacao?: string | null;
+  auditado_em?: string | null;
+  auditado_por?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// despesas_fixas usa valor_mensal e descricao (nao valor/observacoes)
 export interface DespesaFixa {
   id: string;
   fazenda_id?: string | null;
   nome: string;
-  valor: number;
-  periodicidade: "mensal" | "bimestral" | "trimestral" | "semestral" | "anual";
+  categoria?: string | null;
+  valor_mensal: number;
+  periodicidade: Periodicidade;
   data_inicio?: string | null;
   data_fim?: string | null;
-  categoria?: string | null;
-  observacoes?: string | null;
+  descricao?: string | null;
   ativo: boolean;
   criado_em: string;
   atualizado_em: string;

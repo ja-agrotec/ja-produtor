@@ -63,6 +63,32 @@ function urlIntraday(cultura: string): string {
     `https://br.tradingview.com/markets/futures/quotes-agricultural/`
   );
 }
+
+// Normaliza cultura: lowercase, sem acentos, trim
+function normalizar(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+}
+
+// Match fuzzy entre cultura do user e cultura do intraday.
+// User pode digitar "CAFE ARABICA" e o API tem "CAFÉ" — bate por includes.
+function acharIntraday(
+  cultura: string,
+  mapa: Record<string, any>,
+): any | undefined {
+  const norm = normalizar(cultura);
+  if (mapa[norm]) return mapa[norm];
+  // Match parcial: alguma chave do mapa contem palavras da cultura ou vice-versa
+  const palavras = norm.split(/\s+/).filter((p) => p.length > 2);
+  for (const [key, val] of Object.entries(mapa)) {
+    if (palavras.some((p) => key.includes(p))) return val;
+    if (norm.includes(key)) return val;
+  }
+  return undefined;
+}
 import PageHeader from "@/components/ui/PageHeader";
 import KpiCard from "@/components/ui/KpiCard";
 import EmptyState from "@/components/ui/EmptyState";
@@ -294,7 +320,7 @@ export default function HomePage() {
         if (!active || !data.ok) return;
         const map: Record<string, CotacaoIntraday> = {};
         (data.cotacoes as CotacaoIntraday[]).forEach((c) => {
-          map[c.cultura.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "")] = c;
+          map[normalizar(c.cultura)] = c;
         });
         setIntraday(map);
         setDolar(data.dolar_brl ?? null);
@@ -515,9 +541,8 @@ export default function HomePage() {
                 else if (antigo) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-warn" };
                 else if (c.idadeDias != null) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-neutral" };
 
-                // Match intraday (normaliza sem acento pra bater com a chave do mapa)
-                const key = c.cultura.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-                const intra = intraday[key];
+                // Match intraday com fuzzy (CAFE / CAFE ARABICA / CAFÉ todos batem com KC=F)
+                const intra = acharIntraday(c.cultura, intraday);
 
                 return (
                   <div

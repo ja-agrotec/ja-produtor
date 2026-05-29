@@ -140,35 +140,64 @@ async function buscarYahoo(symbol: string): Promise<{
   }
 }
 
-async function buscarDolar(): Promise<{ bid: number | null; ts: string | null }> {
+async function buscarDolar(): Promise<{ bid: number | null; ts: string | null; fonte: string }> {
+  // 1. Primaria: AwesomeAPI (intraday). Vercel as vezes bloqueia, entao
+  //    User-Agent de browser real.
   try {
     const r = await fetch("https://economia.awesomeapi.com.br/json/last/USD-BRL", {
-      headers: { "User-Agent": "ja-agrotec/1.0" },
-      next: { revalidate: 60 }, // dolar 1min
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/json",
+      },
+      next: { revalidate: 60 },
     });
-    if (!r.ok) return { bid: null, ts: null };
-    const data = await r.json();
-    const d = data?.USDBRL;
-    if (!d) return { bid: null, ts: null };
-    return { bid: Number(d.bid) || null, ts: d.create_date || null };
-  } catch {
-    return { bid: null, ts: null };
-  }
+    if (r.ok) {
+      const data = await r.json();
+      const d = data?.USDBRL;
+      if (d && Number(d.bid)) {
+        return { bid: Number(d.bid), ts: d.create_date || null, fonte: "awesomeapi" };
+      }
+    }
+  } catch { /* tenta fallback */ }
+
+  // 2. Fallback: BCB PTAX (oficial, diario, sem rate limit)
+  try {
+    const r = await fetch(
+      "https://api.bcb.gov.br/dados/serie/bcdata.sgs.1/dados/ultimos/1?formato=json",
+      { next: { revalidate: 3600 } },
+    );
+    if (r.ok) {
+      const data = await r.json();
+      const ult = Array.isArray(data) ? data[data.length - 1] : null;
+      if (ult?.valor) {
+        return {
+          bid: Number(String(ult.valor).replace(",", ".")) || null,
+          ts: ult.data || null,
+          fonte: "bcb-ptax",
+        };
+      }
+    }
+  } catch { /* todas falharam */ }
+
+  return { bid: null, ts: null, fonte: "indisponivel" };
 }
 
 export async function GET() {
   // Busca dolar + cada commodity em paralelo
-  const [{ bid: dolar, ts: dolarTs }, ...commodities] = await Promise.all([
+  const [dolarInfo, ...commodities] = await Promise.all([
     buscarDolar(),
     ...Object.entries(CULTURAS).map(async ([cultura, conf]) => {
       const y = await buscarYahoo(conf.yahooSymbol);
       return { cultura, conf, ...y };
     }),
   ]);
+  const dolar = dolarInfo.bid;
+  const dolarTs = dolarInfo.ts;
 
   if (!dolar) {
     return NextResponse.json(
-      { ok: false, erro: "USD/BRL indisponivel" },
+      { ok: false, erro: "USD/BRL indisponivel (awesomeapi+bcb falharam)" },
       { status: 503 },
     );
   }
@@ -198,6 +227,7 @@ export async function GET() {
     ok: true,
     dolar_brl: dolar,
     dolar_atualizado: dolarTs,
+    dolar_fonte: dolarInfo.fonte,
     atualizado_em: new Date().toISOString(),
     cotacoes,
     nota:

@@ -51,16 +51,24 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
       try {
         const c = await bootstrap(getSupabase(), user.id);
         if (!c || !c.perfil) {
-          toast.error("Conta sem perfil de operador. Fale com o produtor.");
-          await getSupabase().auth.signOut();
-          router.push("/login");
+          // Usuario logado mas sem perfil de operador (ex: admin) -
+          // NAO derruba sessao. Redireciona pro Produtor com aviso.
+          toast.info("Esta área é exclusiva pra usuários com role=operador. Voltando pro Produtor.");
+          router.push("/home");
           return;
         }
         setPerfilNome(c.perfil.nome);
         setFazendaNome(c.fazenda?.nome || "");
         setPronto(true);
       } catch (e: any) {
-        toast.error(e?.message || "Erro ao carregar perfil");
+        // Bootstrap pode lancar "Operador sem fazenda atribuida"
+        const msg = String(e?.message || "Erro ao carregar perfil");
+        if (msg.includes("fazenda atribuida")) {
+          toast.error(msg);
+          router.push("/home");
+          return;
+        }
+        toast.error(msg);
       }
     })();
   }, [user, loading, router]);

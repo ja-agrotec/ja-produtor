@@ -46,20 +46,28 @@ const TV_URLS: Record<string, string> = {
   BOI:       "https://br.tradingview.com/symbols/BMFBOVESPA-BGI1!/",
 };
 
-function urlCepea(cultura: string): string {
+function matchFuzzyUrl(mapa: Record<string, string>, cultura: string): string | null {
   const norm = (cultura || "").trim().toUpperCase();
+  if (mapa[norm]) return mapa[norm];
+  // Match parcial: chave contida na cultura OU palavra da cultura contida na chave
+  const palavras = norm.split(/\s+/).filter((p) => p.length > 2);
+  for (const [key, url] of Object.entries(mapa)) {
+    if (norm.includes(key)) return url;
+    if (palavras.some((p) => key.includes(p))) return url;
+  }
+  return null;
+}
+
+function urlCepea(cultura: string): string {
   return (
-    CEPEA_URLS[norm] ||
-    `https://www.google.com/search?q=${encodeURIComponent(
-      "cotação " + cultura + " cepea hoje",
-    )}`
+    matchFuzzyUrl(CEPEA_URLS, cultura) ||
+    `https://www.google.com/search?q=${encodeURIComponent("cotação " + cultura + " cepea hoje")}`
   );
 }
 
 function urlIntraday(cultura: string): string {
-  const norm = (cultura || "").trim().toUpperCase();
   return (
-    TV_URLS[norm] ||
+    matchFuzzyUrl(TV_URLS, cultura) ||
     `https://br.tradingview.com/markets/futures/quotes-agricultural/`
   );
 }

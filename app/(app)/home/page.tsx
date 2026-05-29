@@ -11,8 +11,7 @@ import { fmtBRL, fmtBRLShort, fmtData, fmtInt, hoje } from "@/lib/format";
 import { getFazendaSelecionada } from "@/lib/utils";
 import { buscarClima, iconeWmo, nomeDiaCurto, type ClimaAtual, type DiaPrevisao } from "@/lib/clima";
 
-// Mapping cultura -> URL oficial CEPEA/Esalq pra cotacao do dia.
-// Botoes na home abrem em nova aba.
+// Mapping cultura -> URL oficial CEPEA/Esalq (preço físico do dia).
 const CEPEA_URLS: Record<string, string> = {
   SOJA:     "https://www.cepea.org.br/br/indicador/soja.aspx",
   MILHO:    "https://www.cepea.org.br/br/indicador/milho.aspx",
@@ -30,6 +29,23 @@ const CEPEA_URLS: Record<string, string> = {
   BOI:      "https://www.cepea.org.br/br/indicador/boi-gordo.aspx",
 };
 
+// Mapping cultura -> URL TradingView (intraday/futuros). Preferencia
+// B3 quando ha contrato local, senao cai pra CBOT/ICE internacional.
+const TV_URLS: Record<string, string> = {
+  SOJA:      "https://br.tradingview.com/symbols/CBOT-ZS1!/",                  // CBOT Soybeans
+  MILHO:     "https://br.tradingview.com/symbols/BMFBOVESPA-CCM1!/",          // B3 Milho
+  "CAFÉ":    "https://br.tradingview.com/symbols/BMFBOVESPA-ICF1!/",          // B3 Cafe Arabica
+  CAFE:      "https://br.tradingview.com/symbols/BMFBOVESPA-ICF1!/",
+  CANA:      "https://br.tradingview.com/symbols/NYSE-SB1!/",                  // ICE Acucar (Sugar #11)
+  "CANA-DE-AÇÚCAR": "https://br.tradingview.com/symbols/NYSE-SB1!/",
+  TRIGO:     "https://br.tradingview.com/symbols/CBOT-ZW1!/",                  // CBOT Wheat
+  "ALGODÃO": "https://br.tradingview.com/symbols/NYSE-CT1!/",                  // ICE Cotton
+  ALGODAO:   "https://br.tradingview.com/symbols/NYSE-CT1!/",
+  ARROZ:     "https://br.tradingview.com/symbols/CBOT-ZR1!/",                  // CBOT Rice
+  "BOI GORDO": "https://br.tradingview.com/symbols/BMFBOVESPA-BGI1!/",         // B3 Boi Gordo
+  BOI:       "https://br.tradingview.com/symbols/BMFBOVESPA-BGI1!/",
+};
+
 function urlCepea(cultura: string): string {
   const norm = (cultura || "").trim().toUpperCase();
   return (
@@ -37,6 +53,14 @@ function urlCepea(cultura: string): string {
     `https://www.google.com/search?q=${encodeURIComponent(
       "cotação " + cultura + " cepea hoje",
     )}`
+  );
+}
+
+function urlIntraday(cultura: string): string {
+  const norm = (cultura || "").trim().toUpperCase();
+  return (
+    TV_URLS[norm] ||
+    `https://br.tradingview.com/markets/futures/quotes-agricultural/`
   );
 }
 import PageHeader from "@/components/ui/PageHeader";
@@ -477,27 +501,52 @@ export default function HomePage() {
                           : "Nenhuma venda registrada"}
                       </div>
                     </div>
-                    <a
-                      href={urlCepea(c.cultura)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title={`Abrir cotação ${c.cultura} no CEPEA/Esalq`}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        padding: "6px 12px",
-                        background: "var(--info)",
-                        color: "#fff",
-                        borderRadius: "var(--r)",
-                        fontSize: 12,
-                        fontWeight: 600,
-                        whiteSpace: "nowrap",
-                        textDecoration: "none",
-                      }}
-                    >
-                      💹 CEPEA →
-                    </a>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <a
+                        href={urlCepea(c.cultura)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Cotação física do dia (CEPEA/Esalq) — ${c.cultura}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                          padding: "5px 10px",
+                          background: "var(--info)",
+                          color: "#fff",
+                          borderRadius: "var(--r)",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          textDecoration: "none",
+                        }}
+                      >
+                        💹 CEPEA
+                      </a>
+                      <a
+                        href={urlIntraday(c.cultura)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`Cotação em tempo real (TradingView) — ${c.cultura}`}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 4,
+                          padding: "5px 10px",
+                          background: "var(--success)",
+                          color: "#fff",
+                          borderRadius: "var(--r)",
+                          fontSize: 11,
+                          fontWeight: 600,
+                          whiteSpace: "nowrap",
+                          textDecoration: "none",
+                        }}
+                      >
+                        📈 Tempo real
+                      </a>
+                    </div>
                   </div>
                 );
               })}

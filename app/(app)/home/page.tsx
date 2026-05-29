@@ -69,6 +69,15 @@ import EmptyState from "@/components/ui/EmptyState";
 import FazendaSelector from "@/components/ui/FazendaSelector";
 
 type CotacaoCultura = { cultura: string; preco: number | null; data: string | null; idadeDias: number | null };
+type CotacaoIntraday = {
+  cultura: string;
+  bolsa: string;
+  simbolo: string;
+  preco_brl_saca: number;
+  saca_kg: number;
+  variacao_pct: number | null;
+  observacao?: string;
+};
 
 const DICAS_AGRONOMICAS = [
   "Monitoramento frequente de pragas reduz custos de controle em até 40%.",
@@ -112,6 +121,8 @@ export default function HomePage() {
 
   // Widgets
   const [cotacoes, setCotacoes] = useState<CotacaoCultura[]>([]);
+  const [intraday, setIntraday] = useState<Record<string, CotacaoIntraday>>({});
+  const [dolar, setDolar] = useState<number | null>(null);
   const [ultimosLanc, setUltimosLanc] = useState<Lancamento[]>([]);
   const [clima, setClima] = useState<ClimaAtual | null>(null);
   const [previsao, setPrevisao] = useState<DiaPrevisao[]>([]);
@@ -272,6 +283,27 @@ export default function HomePage() {
     setUltimosLanc((rLan.data || []) as Lancamento[]);
     setCarregando(false);
   }
+
+  // Cotacao intraday (Yahoo CBOT/ICE x USD/BRL) — refresh a cada 5min
+  useEffect(() => {
+    let active = true;
+    async function fetchIntraday() {
+      try {
+        const r = await fetch("/api/cotacoes/realtime", { cache: "no-store" });
+        const data = await r.json();
+        if (!active || !data.ok) return;
+        const map: Record<string, CotacaoIntraday> = {};
+        (data.cotacoes as CotacaoIntraday[]).forEach((c) => {
+          map[c.cultura.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "")] = c;
+        });
+        setIntraday(map);
+        setDolar(data.dolar_brl ?? null);
+      } catch { /* silencioso */ }
+    }
+    fetchIntraday();
+    const i = setInterval(fetchIntraday, 5 * 60 * 1000);
+    return () => { active = false; clearInterval(i); };
+  }, []);
 
   // Clima: pega cidade da fazenda selecionada (ou maior area se "todas")
   // e busca atual + previsao 5 dias via lib/clima.ts
@@ -455,13 +487,15 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Cotações: sua venda + atalho pra CEPEA do dia */}
+        {/* Cotações: intraday + sua venda + atalho pra CEPEA */}
         <div className="card">
-          <div className="flex items-start justify-between mb-3">
+          <div className="flex items-start justify-between mb-3 flex-wrap gap-2">
             <h3 style={{ margin: 0 }}>📊 Cotações</h3>
-            <span className="text-xs" style={{ color: "var(--muted)" }}>
-              CEPEA/Esalq abre em nova aba
-            </span>
+            {dolar && (
+              <span className="text-xs" style={{ color: "var(--muted)" }}>
+                Estimativa CBOT/ICE × USD/BRL R$ {dolar.toFixed(4)}
+              </span>
+            )}
           </div>
           {cotacoes.length === 0 ? (
             <p className="text-sm" style={{ color: "var(--muted)" }}>
@@ -481,6 +515,10 @@ export default function HomePage() {
                 else if (antigo) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-warn" };
                 else if (c.idadeDias != null) badge = { label: `${c.idadeDias}d atrás`, cls: "badge-neutral" };
 
+                // Match intraday (normaliza sem acento pra bater com a chave do mapa)
+                const key = c.cultura.toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+                const intra = intraday[key];
+
                 return (
                   <div
                     key={c.cultura}
@@ -490,12 +528,34 @@ export default function HomePage() {
                       opacity: sem ? 0.85 : 1,
                     }}
                   >
-                    <div className="min-w-0">
-                      <div className="font-semibold text-sm flex items-center gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold text-sm flex items-center gap-2 flex-wrap">
                         {c.cultura}
                         {badge && <span className={`badge ${badge.cls}`} style={{ fontSize: 9 }}>{badge.label}</span>}
                       </div>
-                      <div className="text-xs" style={{ color: "var(--muted)" }}>
+                      {intra && (
+                        <div className="flex items-baseline gap-2 mt-0.5">
+                          <span className="font-bold text-sm" style={{ color: "var(--info)" }}>
+                            ~ {fmtBRL(intra.preco_brl_saca)}{intra.saca_kg !== 1 ? `/sc ${intra.saca_kg}kg` : "/lb"}
+                          </span>
+                          {intra.variacao_pct != null && (
+                            <span
+                              className="text-xs font-semibold"
+                              style={{
+                                color: intra.variacao_pct > 0 ? "var(--success)"
+                                  : intra.variacao_pct < 0 ? "var(--danger)" : "var(--muted)",
+                              }}
+                            >
+                              {intra.variacao_pct > 0 ? "▲" : intra.variacao_pct < 0 ? "▼" : "−"}
+                              {" " + Math.abs(intra.variacao_pct).toFixed(2)}%
+                            </span>
+                          )}
+                          <span className="text-xs" style={{ color: "var(--dim)" }}>
+                            ({intra.bolsa})
+                          </span>
+                        </div>
+                      )}
+                      <div className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
                         {c.data
                           ? `Sua última venda: ${fmtBRL(c.preco)}/sc em ${fmtData(c.data)}`
                           : "Nenhuma venda registrada"}

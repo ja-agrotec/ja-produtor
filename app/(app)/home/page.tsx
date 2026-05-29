@@ -10,7 +10,35 @@ import type { Fazenda, Insumo, Safra, Lancamento, VendaGraos } from "@/lib/types
 import { fmtBRL, fmtBRLShort, fmtData, fmtInt, hoje } from "@/lib/format";
 import { getFazendaSelecionada } from "@/lib/utils";
 import { buscarClima, iconeWmo, nomeDiaCurto, type ClimaAtual, type DiaPrevisao } from "@/lib/clima";
-import { lerUltimasCotacoes, type CotacaoExterna } from "@/lib/cotacoes";
+
+// Mapping cultura -> URL oficial CEPEA/Esalq pra cotacao do dia.
+// Botoes na home abrem em nova aba.
+const CEPEA_URLS: Record<string, string> = {
+  SOJA:     "https://www.cepea.org.br/br/indicador/soja.aspx",
+  MILHO:    "https://www.cepea.org.br/br/indicador/milho.aspx",
+  "CAFÉ":   "https://www.cepea.org.br/br/indicador/cafe.aspx",
+  CAFE:     "https://www.cepea.org.br/br/indicador/cafe.aspx",
+  CANA:     "https://www.cepea.org.br/br/indicador/cana-de-acucar.aspx",
+  "CANA-DE-AÇÚCAR": "https://www.cepea.org.br/br/indicador/cana-de-acucar.aspx",
+  TRIGO:    "https://www.cepea.org.br/br/indicador/trigo.aspx",
+  "ALGODÃO": "https://www.cepea.org.br/br/indicador/algodao.aspx",
+  ALGODAO:  "https://www.cepea.org.br/br/indicador/algodao.aspx",
+  ARROZ:    "https://www.cepea.org.br/br/indicador/arroz.aspx",
+  "FEIJÃO": "https://www.cepea.org.br/br/indicador/feijao.aspx",
+  FEIJAO:   "https://www.cepea.org.br/br/indicador/feijao.aspx",
+  "BOI GORDO": "https://www.cepea.org.br/br/indicador/boi-gordo.aspx",
+  BOI:      "https://www.cepea.org.br/br/indicador/boi-gordo.aspx",
+};
+
+function urlCepea(cultura: string): string {
+  const norm = (cultura || "").trim().toUpperCase();
+  return (
+    CEPEA_URLS[norm] ||
+    `https://www.google.com/search?q=${encodeURIComponent(
+      "cotação " + cultura + " cepea hoje",
+    )}`
+  );
+}
 import PageHeader from "@/components/ui/PageHeader";
 import KpiCard from "@/components/ui/KpiCard";
 import EmptyState from "@/components/ui/EmptyState";
@@ -60,7 +88,6 @@ export default function HomePage() {
 
   // Widgets
   const [cotacoes, setCotacoes] = useState<CotacaoCultura[]>([]);
-  const [cotacoesExternas, setCotacoesExternas] = useState<CotacaoExterna[]>([]);
   const [ultimosLanc, setUltimosLanc] = useState<Lancamento[]>([]);
   const [clima, setClima] = useState<ClimaAtual | null>(null);
   const [previsao, setPrevisao] = useState<DiaPrevisao[]>([]);
@@ -219,15 +246,6 @@ export default function HomePage() {
     setCotacoes(lista);
 
     setUltimosLanc((rLan.data || []) as Lancamento[]);
-
-    // Cotacoes externas (CEPEA/Notamercantil/etc.) — independente das vendas
-    try {
-      const ext = await lerUltimasCotacoes();
-      setCotacoesExternas(ext);
-    } catch {
-      setCotacoesExternas([]);
-    }
-
     setCarregando(false);
   }
 
@@ -413,67 +431,12 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Cotacoes externas (mercado — CEPEA/Notamercantil/etc.) */}
-        {cotacoesExternas.length > 0 && (
-          <div className="card">
-            <div className="flex items-start justify-between mb-3">
-              <h3 style={{ margin: 0 }}>💹 Cotação de Mercado</h3>
-              <span className="text-xs" style={{ color: "var(--muted)" }}>
-                Fonte: {cotacoesExternas[0]?.fonte || "—"}
-              </span>
-            </div>
-            <div className="space-y-2">
-              {cotacoesExternas.map((c) => {
-                const positiva = c.variacao_pct != null && c.variacao_pct > 0;
-                const negativa = c.variacao_pct != null && c.variacao_pct < 0;
-                return (
-                  <div
-                    key={c.cultura + (c.praca || "")}
-                    className="flex items-center justify-between p-2 rounded-ja"
-                    style={{ background: "var(--info-lt)" }}
-                  >
-                    <div>
-                      <div className="font-semibold text-sm">
-                        {c.cultura}
-                        {c.praca && (
-                          <span style={{ color: "var(--muted)", fontWeight: 400, marginLeft: 6, fontSize: 11 }}>
-                            · {c.praca}
-                          </span>
-                        )}
-                      </div>
-                      <div className="text-xs" style={{ color: "var(--muted)" }}>
-                        Atualizada em {fmtData(c.data)}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold text-base" style={{ color: "var(--info)" }}>
-                        {fmtBRL(c.preco_saca)}/sc
-                      </div>
-                      {c.variacao_pct != null && (
-                        <div
-                          className="text-xs"
-                          style={{
-                            color: positiva ? "var(--success)" : negativa ? "var(--danger)" : "var(--muted)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          {positiva ? "▲" : negativa ? "▼" : "−"} {Math.abs(c.variacao_pct).toFixed(2)}%
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Cotações internas (últimas vendas registradas) */}
+        {/* Cotações: sua venda + atalho pra CEPEA do dia */}
         <div className="card">
           <div className="flex items-start justify-between mb-3">
-            <h3 style={{ margin: 0 }}>📊 Suas Cotações Praticadas</h3>
-            <span className="text-xs" style={{ color: "var(--muted)" }} title="Baseado em vendas_graos.preco_saca">
-              Última venda registrada
+            <h3 style={{ margin: 0 }}>📊 Cotações</h3>
+            <span className="text-xs" style={{ color: "var(--muted)" }}>
+              CEPEA/Esalq abre em nova aba
             </span>
           </div>
           {cotacoes.length === 0 ? (
@@ -497,24 +460,44 @@ export default function HomePage() {
                 return (
                   <div
                     key={c.cultura}
-                    className="flex items-center justify-between p-2 rounded-ja"
+                    className="flex items-center justify-between gap-3 p-2 rounded-ja"
                     style={{
                       background: sem ? "var(--bg)" : "var(--green-bg)",
-                      opacity: sem ? 0.7 : 1,
+                      opacity: sem ? 0.85 : 1,
                     }}
                   >
-                    <div>
+                    <div className="min-w-0">
                       <div className="font-semibold text-sm flex items-center gap-2">
                         {c.cultura}
                         {badge && <span className={`badge ${badge.cls}`} style={{ fontSize: 9 }}>{badge.label}</span>}
                       </div>
                       <div className="text-xs" style={{ color: "var(--muted)" }}>
-                        {c.data ? `Última venda em ${fmtData(c.data)}` : "Nenhuma venda registrada ainda"}
+                        {c.data
+                          ? `Sua última venda: ${fmtBRL(c.preco)}/sc em ${fmtData(c.data)}`
+                          : "Nenhuma venda registrada"}
                       </div>
                     </div>
-                    <div className="font-bold text-base" style={{ color: sem ? "var(--muted)" : "#2d7d32" }}>
-                      {sem ? "—" : `${fmtBRL(c.preco)}/sc`}
-                    </div>
+                    <a
+                      href={urlCepea(c.cultura)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={`Abrir cotação ${c.cultura} no CEPEA/Esalq`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                        padding: "6px 12px",
+                        background: "var(--info)",
+                        color: "#fff",
+                        borderRadius: "var(--r)",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        whiteSpace: "nowrap",
+                        textDecoration: "none",
+                      }}
+                    >
+                      💹 CEPEA →
+                    </a>
                   </div>
                 );
               })}

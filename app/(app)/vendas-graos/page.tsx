@@ -8,7 +8,7 @@ import type {
   TipoContratoVenda, StatusVenda,
 } from "@/lib/types";
 import { fmt, fmtBRL, fmtData, hoje } from "@/lib/format";
-import { DEBOUNCE_MS, debounce, CULTURAS_PADRAO } from "@/lib/utils";
+import { DEBOUNCE_MS, debounce, CULTURAS_PADRAO, matchCulturaPadrao } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import KpiCard from "@/components/ui/KpiCard";
@@ -517,8 +517,7 @@ function ContratoModal({
   function aoMudarSafra(id: string) {
     setSafraId(id);
     const s = safras.find((x) => x.id === id);
-    // Autopreenche cultura SEMPRE que muda safra (sobrescreve valor antigo)
-    if (s) setCultura(s.cultura);
+    if (s) setCultura(matchCulturaPadrao(s.cultura));
   }
 
   async function salvar() {
@@ -599,6 +598,9 @@ function ContratoModal({
           <label className="label">Cultura</label>
           <select className="input" value={cultura} onChange={(e) => setCultura(e.target.value)}>
             <option value="">—</option>
+            {cultura && !CULTURAS_PADRAO.includes(cultura) && (
+              <option value={cultura}>{cultura}</option>
+            )}
             {CULTURAS_PADRAO.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>

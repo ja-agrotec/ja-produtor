@@ -12,6 +12,7 @@ import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import Modal from "@/components/ui/Modal";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { matchCulturaSlug } from "@/lib/utils";
 import {
   BarChart,
   Bar,
@@ -536,7 +537,7 @@ export default function QualidadeLotesPage() {
                   setForm({
                     ...form,
                     safra_id: novoId,
-                    cultura: s?.cultura ? s.cultura.toLowerCase() : form.cultura,
+                    cultura: matchCulturaSlug(s?.cultura) ?? form.cultura,
                     talhao_id: novoTalhao,
                   });
                 }}

@@ -8,7 +8,7 @@ import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { AnaliseSolo, Fazenda, Talhao } from "@/lib/types";
 import { fmtData, hoje } from "@/lib/format";
-import { CULTURAS_PADRAO } from "@/lib/utils";
+import { CULTURAS_PADRAO, matchCulturaPadrao } from "@/lib/utils";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import KpiCard from "@/components/ui/KpiCard";
@@ -558,9 +558,8 @@ export default function AnaliseSoloPage() {
                   setForm({
                     ...form,
                     talhao_id: novoTalhao,
-                    // Autopreenche cultura_referencia com a cultura_atual do talhao se ainda vazio
                     cultura_referencia:
-                      form.cultura_referencia || (t?.cultura_atual ?? "") || "",
+                      form.cultura_referencia || matchCulturaPadrao(t?.cultura_atual),
                   });
                 }}
               >
@@ -594,6 +593,9 @@ export default function AnaliseSoloPage() {
               <label className="label">Cultura ref.</label>
               <select className="input" value={form.cultura_referencia} onChange={(e) => setForm({ ...form, cultura_referencia: e.target.value })}>
                 <option value="">(Nenhuma)</option>
+                {form.cultura_referencia && !CULTURAS_PADRAO.includes(form.cultura_referencia) && (
+                  <option value={form.cultura_referencia}>{form.cultura_referencia}</option>
+                )}
                 {CULTURAS_PADRAO.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>

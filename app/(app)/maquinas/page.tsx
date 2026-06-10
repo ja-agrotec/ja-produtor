@@ -30,6 +30,10 @@ type Form = {
   status: StatusMaquina;
   fazenda_id: string;
   observacoes: string;
+  valor_aquisicao: string;
+  ano_aquisicao: string;
+  vida_util_anos: string;
+  valor_residual: string;
 };
 
 const FORM_VAZIO: Form = {
@@ -44,6 +48,10 @@ const FORM_VAZIO: Form = {
   status: "ativo",
   fazenda_id: "",
   observacoes: "",
+  valor_aquisicao: "",
+  ano_aquisicao: "",
+  vida_util_anos: "10",
+  valor_residual: "0",
 };
 
 type FormManut = {
@@ -147,6 +155,10 @@ export default function MaquinasPage() {
       status: m.status || "ativo",
       fazenda_id: m.fazenda_id || "",
       observacoes: m.observacoes || "",
+      valor_aquisicao: m.valor_aquisicao != null ? String(m.valor_aquisicao) : "",
+      ano_aquisicao: m.ano_aquisicao != null ? String(m.ano_aquisicao) : "",
+      vida_util_anos: m.vida_util_anos != null ? String(m.vida_util_anos) : "10",
+      valor_residual: m.valor_residual != null ? String(m.valor_residual) : "0",
     });
     setEditando(m);
     setNovoOpen(false);
@@ -176,6 +188,10 @@ export default function MaquinasPage() {
       status: form.status,
       fazenda_id: form.fazenda_id || null,
       observacoes: form.observacoes.trim() || null,
+      valor_aquisicao: form.valor_aquisicao ? parseFloat(form.valor_aquisicao) : null,
+      ano_aquisicao: form.ano_aquisicao ? parseInt(form.ano_aquisicao) : null,
+      vida_util_anos: form.vida_util_anos ? parseInt(form.vida_util_anos) : null,
+      valor_residual: form.valor_residual ? parseFloat(form.valor_residual) : 0,
     };
     let r;
     if (editando) {
@@ -534,6 +550,63 @@ export default function MaquinasPage() {
               value={form.observacoes}
               onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
               style={{ resize: "vertical" }}
+            />
+          </div>
+
+          <div className="sm:col-span-2 pt-2 mt-2 border-t border-ja-brd">
+            <div className="text-sm font-semibold text-ja-dark mb-2">
+              Depreciacao (opcional, usado no fechamento de safra)
+            </div>
+            <div className="text-xs text-ja-muted mb-3">
+              Linha reta: (valor_aquisicao - valor_residual) / vida_util_anos por ano.
+            </div>
+          </div>
+          <div>
+            <label className="label">Valor de aquisicao (R$)</label>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.valor_aquisicao}
+              onChange={(e) => setForm({ ...form, valor_aquisicao: e.target.value })}
+              placeholder="Ex: 350000"
+            />
+          </div>
+          <div>
+            <label className="label">Ano de aquisicao</label>
+            <input
+              className="input"
+              type="number"
+              min="1980"
+              max="2100"
+              value={form.ano_aquisicao}
+              onChange={(e) => setForm({ ...form, ano_aquisicao: e.target.value })}
+              placeholder={String(new Date().getFullYear())}
+            />
+          </div>
+          <div>
+            <label className="label">Vida util (anos)</label>
+            <input
+              className="input"
+              type="number"
+              min="1"
+              max="50"
+              value={form.vida_util_anos}
+              onChange={(e) => setForm({ ...form, vida_util_anos: e.target.value })}
+              placeholder="10"
+            />
+          </div>
+          <div>
+            <label className="label">Valor residual (R$)</label>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.valor_residual}
+              onChange={(e) => setForm({ ...form, valor_residual: e.target.value })}
+              placeholder="0"
             />
           </div>
         </div>

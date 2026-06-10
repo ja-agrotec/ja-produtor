@@ -19,7 +19,7 @@ import {
 } from "recharts";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import type { Safra, Fazenda, Lancamento, Categoria } from "@/lib/types";
+import type { Safra, Fazenda, Lancamento, Categoria, Maquina, DespesaFixa } from "@/lib/types";
 import { fmtBRL, fmtBRLShort, fmtData, fmtInt, fmtPct } from "@/lib/format";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
@@ -42,12 +42,55 @@ type SafraComFazenda = Safra & { fazendas?: { nome: string } | null };
 
 type AggSafra = {
   safra: SafraComFazenda;
+  despesasLancamentos: number;
+  depreciacao: number;
+  despesasFixas: number;
   despesas: number;
   receitas: number;
   porCategoria: { categoria: string; valor: number; tipo: "despesa" | "receita" }[];
+  mesesSafra: number;
   lucro: number;
   roi: number | null;
 };
+
+function mesesEntreDatas(inicio: string, fim: string): number {
+  const i = new Date(inicio);
+  const f = new Date(fim);
+  if (isNaN(i.getTime()) || isNaN(f.getTime())) return 0;
+  const meses = (f.getFullYear() - i.getFullYear()) * 12 + (f.getMonth() - i.getMonth());
+  return Math.max(0, meses + (f.getDate() >= i.getDate() ? 1 : 0));
+}
+
+function calcularCustosFixos(
+  safra: SafraComFazenda,
+  maquinas: Maquina[],
+  despesasFixas: DespesaFixa[],
+): { depreciacao: number; despesasFixas: number; mesesSafra: number } {
+  const inicio = safra.data_plantio;
+  const fim = safra.data_colheita || new Date().toISOString().substring(0, 10);
+  if (!inicio) return { depreciacao: 0, despesasFixas: 0, mesesSafra: 0 };
+  const meses = mesesEntreDatas(inicio, fim);
+  if (meses <= 0) return { depreciacao: 0, despesasFixas: 0, mesesSafra: 0 };
+
+  let dep = 0;
+  maquinas.forEach((m) => {
+    if (m.fazenda_id !== safra.fazenda_id) return;
+    const valor = Number(m.valor_aquisicao || 0);
+    const residual = Number(m.valor_residual || 0);
+    const vida = Number(m.vida_util_anos || 0);
+    if (valor <= 0 || vida <= 0) return;
+    dep += ((valor - residual) / vida) * (meses / 12);
+  });
+
+  let df = 0;
+  despesasFixas.forEach((d) => {
+    if (!d.ativo) return;
+    if (d.fazenda_id && d.fazenda_id !== safra.fazenda_id) return;
+    df += Number(d.valor_mensal || 0) * meses;
+  });
+
+  return { depreciacao: dep, despesasFixas: df, mesesSafra: meses };
+}
 
 type FechamentoForm = {
   safra_id: string;
@@ -82,6 +125,8 @@ function FechamentoSafraContent() {
   const [safras, setSafras] = useState<SafraComFazenda[]>([]);
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [maquinas, setMaquinas] = useState<Maquina[]>([]);
+  const [despesasFixas, setDespesasFixas] = useState<DespesaFixa[]>([]);
   const [carregando, setCarregando] = useState(true);
 
   const [form, setForm] = useState<FechamentoForm>({
@@ -98,7 +143,7 @@ function FechamentoSafraContent() {
     setCarregando(true);
     try {
       const sb = getSupabase();
-      const [rSaf, rLan, rCat] = await Promise.all([
+      const [rSaf, rLan, rCat, rMaq, rDF] = await Promise.all([
         sb
           .from("safras")
           .select("*, fazendas(nome)")
@@ -106,11 +151,15 @@ function FechamentoSafraContent() {
           .order("data_plantio", { ascending: false, nullsFirst: false }),
         sb.from("lancamentos").select("*").limit(5000),
         sb.from("categorias_lancamento").select("*"),
+        sb.from("maquinas").select("*").eq("ativo", true),
+        sb.from("despesas_fixas").select("*").eq("ativo", true),
       ]);
       if (rSaf.error) throw rSaf.error;
       setSafras((rSaf.data || []) as SafraComFazenda[]);
       setLancamentos((rLan.data || []) as Lancamento[]);
       setCategorias((rCat.data || []) as Categoria[]);
+      setMaquinas((rMaq.data || []) as Maquina[]);
+      setDespesasFixas((rDF.data || []) as DespesaFixa[]);
     } catch (e: any) {
       toast.error("Erro ao carregar fechamentos: " + (e?.message || e));
     } finally {
@@ -137,15 +186,20 @@ function FechamentoSafraContent() {
     return m;
   }, [categorias]);
 
-  // Agrega custos/receitas por safra a partir dos lancamentos
+  // Agrega custos/receitas por safra: lancamentos + depreciacao + despesas fixas
   const aggPorSafra = useMemo(() => {
     const map = new Map<string, AggSafra>();
     safras.forEach((s) => {
+      const cf = calcularCustosFixos(s, maquinas, despesasFixas);
       map.set(s.id, {
         safra: s,
-        despesas: 0,
+        despesasLancamentos: 0,
+        depreciacao: cf.depreciacao,
+        despesasFixas: cf.despesasFixas,
+        despesas: cf.depreciacao + cf.despesasFixas,
         receitas: 0,
         porCategoria: [],
+        mesesSafra: cf.mesesSafra,
         lucro: 0,
         roi: null,
       });
@@ -157,8 +211,12 @@ function FechamentoSafraContent() {
       const a = map.get(l.safra_id);
       if (!a) return;
       const valor = Number(l.custo_total || 0);
-      if (l.tipo === "despesa") a.despesas += valor;
-      else if (l.tipo === "receita") a.receitas += valor;
+      if (l.tipo === "despesa") {
+        a.despesasLancamentos += valor;
+        a.despesas += valor;
+      } else if (l.tipo === "receita") {
+        a.receitas += valor;
+      }
       const cat = catMap[l.categoria_id]?.nome || "Outros";
       if (!catAcc[l.safra_id]) catAcc[l.safra_id] = {};
       const slot = catAcc[l.safra_id][cat] || { valor: 0, tipo: l.tipo };
@@ -171,11 +229,18 @@ function FechamentoSafraContent() {
       a.porCategoria = Object.entries(cats)
         .map(([categoria, v]) => ({ categoria, valor: v.valor, tipo: v.tipo }))
         .sort((x, y) => y.valor - x.valor);
+      // Custos fixos entram como linhas sinteticas na composicao de custos
+      if (a.depreciacao > 0) {
+        a.porCategoria.unshift({ categoria: "Depreciacao", valor: a.depreciacao, tipo: "despesa" });
+      }
+      if (a.despesasFixas > 0) {
+        a.porCategoria.unshift({ categoria: "Despesas fixas", valor: a.despesasFixas, tipo: "despesa" });
+      }
       a.lucro = a.receitas - a.despesas;
       a.roi = a.despesas > 0 ? (a.lucro / a.despesas) * 100 : null;
     });
     return map;
-  }, [safras, lancamentos, catMap]);
+  }, [safras, lancamentos, catMap, maquinas, despesasFixas]);
 
   const safrasAbertas = useMemo(
     () => safras.filter((s) => s.status === "aberta" || s.status === "planejamento"),
@@ -226,13 +291,26 @@ function FechamentoSafraContent() {
     const area = Number(safraSelecionada.area_ha || 0);
     const producao = Number(form.producao_sc || 0);
     const produtividade = area > 0 ? producao / area : 0;
+    const custoLancamentos = aggSafraSelecionada.despesasLancamentos;
+    const custoDepreciacao = aggSafraSelecionada.depreciacao;
+    const custoDespesasFixas = aggSafraSelecionada.despesasFixas;
     const custo = aggSafraSelecionada.despesas;
-    // Se receita_total foi informada manualmente, usa ela; senao usa a soma dos lancamentos
     const receitaInformada = Number(form.receita_total || 0);
     const receita = receitaInformada > 0 ? receitaInformada : aggSafraSelecionada.receitas;
     const lucro = receita - custo;
     const roi = custo > 0 ? (lucro / custo) * 100 : 0;
-    return { producao, produtividade, custo, receita, lucro, roi };
+    return {
+      producao,
+      produtividade,
+      custoLancamentos,
+      custoDepreciacao,
+      custoDespesasFixas,
+      custo,
+      receita,
+      lucro,
+      roi,
+      mesesSafra: aggSafraSelecionada.mesesSafra,
+    };
   }, [safraSelecionada, aggSafraSelecionada, form.producao_sc, form.receita_total]);
 
   // -- Acoes --
@@ -773,7 +851,18 @@ function NovoFechamento({
   safrasAbertas: SafraComFazenda[];
   safraSelecionada: SafraComFazenda | null;
   aggSafra: AggSafra | null;
-  calculo: { producao: number; produtividade: number; custo: number; receita: number; lucro: number; roi: number } | null;
+  calculo: {
+    producao: number;
+    produtividade: number;
+    custoLancamentos: number;
+    custoDepreciacao: number;
+    custoDespesasFixas: number;
+    custo: number;
+    receita: number;
+    lucro: number;
+    roi: number;
+    mesesSafra: number;
+  } | null;
   onEncerrar: () => void;
   salvando: boolean;
 }) {
@@ -899,7 +988,7 @@ function NovoFechamento({
             >
               <Info rotulo="Producao" valor={`${fmtInt(calculo.producao)} sc`} />
               <Info rotulo="Produtividade" valor={`${fmtInt(calculo.produtividade)} sc/ha`} />
-              <Info rotulo="Custo" valor={fmtBRLShort(calculo.custo)} />
+              <Info rotulo="Custo Total" valor={fmtBRLShort(calculo.custo)} />
               <Info rotulo="Receita" valor={fmtBRLShort(calculo.receita)} />
               <Info
                 rotulo="Lucro Liquido"
@@ -910,6 +999,38 @@ function NovoFechamento({
                 }
               />
               <Info rotulo="ROI" valor={fmtPct(calculo.roi, 1)} />
+            </div>
+
+            <div
+              className="mb-4 text-xs"
+              style={{
+                background: "var(--green-bg)",
+                padding: "10px 12px",
+                borderRadius: "var(--r)",
+              }}
+            >
+              <div className="font-semibold mb-1" style={{ color: "var(--text)" }}>
+                Decomposicao do custo total ({calculo.mesesSafra} {calculo.mesesSafra === 1 ? "mes" : "meses"} de safra)
+              </div>
+              <div className="flex justify-between" style={{ color: "var(--muted)" }}>
+                <span>Lancamentos de despesa</span>
+                <span>{fmtBRL(calculo.custoLancamentos)}</span>
+              </div>
+              <div className="flex justify-between" style={{ color: "var(--muted)" }}>
+                <span>+ Depreciacao de maquinas</span>
+                <span>{fmtBRL(calculo.custoDepreciacao)}</span>
+              </div>
+              <div className="flex justify-between" style={{ color: "var(--muted)" }}>
+                <span>+ Despesas fixas rateadas</span>
+                <span>{fmtBRL(calculo.custoDespesasFixas)}</span>
+              </div>
+              <div
+                className="flex justify-between font-semibold mt-1 pt-1"
+                style={{ color: "var(--text)", borderTop: "1px solid var(--brd)" }}
+              >
+                <span>= Custo total</span>
+                <span>{fmtBRL(calculo.custo)}</span>
+              </div>
             </div>
 
             <h3 className="mb-2 text-sm font-display" style={{ color: "var(--muted)" }}>

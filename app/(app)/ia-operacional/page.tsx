@@ -1,7 +1,8 @@
 "use client";
 
-// IA Operacional — recomendações com regras hardcoded (sem chamada externa).
-// Portado de modules/admin-ia-operacional.js.
+// IA Operacional — primeiro tenta /api/ia-operacional (Claude Haiku).
+// Se a API nao responder (sem key, fora do ar), cai pro fallback
+// heuristico com regras hardcoded.
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -25,6 +26,103 @@ type Item = {
   acao: { label: string; href: string };
 };
 
+type Fonte = "ia" | "heuristica";
+
+// Agrega dados em metricas enxutas pra mandar pro Claude sem
+// estourar tokens. Cita so o que importa: producao, custo, vendas,
+// estoque critico, talhoes ociosos.
+function montarSnapshot(d: {
+  lan: Lancamento[];
+  saf: Safra[];
+  ven: VendaGraos[];
+  ins: Insumo[];
+  tal: Talhao[];
+  periodoMeses: string;
+  cultura: string;
+}) {
+  const despesas = d.lan
+    .filter((l) => l.tipo === "despesa")
+    .reduce((s, l) => s + (l.custo_total || 0), 0);
+  const receitas = d.lan
+    .filter((l) => l.tipo === "receita")
+    .reduce((s, l) => s + (l.custo_total || 0), 0);
+
+  const safras = d.saf.map((s) => ({
+    nome: s.nome,
+    cultura: s.cultura,
+    status: s.status,
+    area_ha: s.area_ha,
+    produtividade_sc_ha: s.produtividade_sc_ha,
+    custo_total: s.custo_total,
+    receita_total: s.receita_total,
+    data_plantio: s.data_plantio,
+    data_colheita: s.data_colheita,
+  }));
+
+  const vendas = d.ven.slice(0, 15).map((v) => ({
+    cultura: v.cultura,
+    quantidade_sc: v.quantidade_sc,
+    preco_saca: v.preco_saca,
+    valor_total: Number(v.quantidade_sc || 0) * Number(v.preco_saca || 0),
+    status: v.status,
+    data_contrato: v.data_contrato,
+  }));
+
+  const insumosCriticos = d.ins
+    .filter((i) => (i.estoque_minimo || 0) > 0 && (i.estoque_atual || 0) <= (i.estoque_minimo || 0))
+    .slice(0, 10)
+    .map((i) => ({
+      nome: i.nome,
+      categoria: i.categoria,
+      estoque_atual: i.estoque_atual,
+      estoque_minimo: i.estoque_minimo,
+      unidade: i.unidade,
+    }));
+
+  const talhoesSemCultura = d.tal.filter((t) => !t.cultura_atual).length;
+  const areaOciosa = d.tal
+    .filter((t) => !t.cultura_atual)
+    .reduce((s, t) => s + (t.area_ha || 0), 0);
+
+  return {
+    filtros: { periodo_meses: d.periodoMeses, cultura: d.cultura || "todas" },
+    totais: {
+      despesas_periodo: Math.round(despesas),
+      receitas_periodo: Math.round(receitas),
+      lucro_periodo: Math.round(receitas - despesas),
+      qtd_safras: d.saf.length,
+      qtd_talhoes: d.tal.length,
+      qtd_insumos_ativos: d.ins.length,
+      talhoes_sem_cultura: talhoesSemCultura,
+      area_ociosa_ha: Math.round(areaOciosa),
+    },
+    safras,
+    vendas_recentes: vendas,
+    insumos_em_alerta: insumosCriticos,
+  };
+}
+
+async function tentarIA(snapshot: ReturnType<typeof montarSnapshot>): Promise<{
+  oportunidades: any[];
+  riscos: any[];
+  acoes: any[];
+  resumo?: string;
+} | null> {
+  try {
+    const r = await fetch("/api/ia-operacional", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(snapshot),
+    });
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !Array.isArray(d.oportunidades)) return null;
+    return d;
+  } catch {
+    return null;
+  }
+}
+
 const BENCH_PROD: Record<string, number> = {
   SOJA: 60,
   MILHO: 170,
@@ -41,6 +139,8 @@ export default function IaOperacionalPage() {
   const [oportunidades, setOportunidades] = useState<Item[]>([]);
   const [riscos, setRiscos] = useState<Item[]>([]);
   const [acoes, setAcoes] = useState<Item[]>([]);
+  const [fonte, setFonte] = useState<Fonte>("heuristica");
+  const [resumoIA, setResumoIA] = useState<string>("");
 
   useEffect(() => {
     setFazendaSel(getFazendaSelecionada());
@@ -102,6 +202,31 @@ export default function IaOperacionalPage() {
     const ins = (rI.data || []) as Insumo[];
     const tal = (rT.data || []) as Talhao[];
 
+    // Tenta IA real primeiro (snapshot enxuto pra nao estourar tokens)
+    const snapshot = montarSnapshot({ lan, saf, ven, ins, tal, periodoMeses, cultura });
+    const respIA = await tentarIA(snapshot);
+    if (respIA) {
+      const mapIA = (lista: any[], pad: string): Item[] =>
+        (lista || []).map((it, i) => ({
+          id: `ia-${pad}-${i}`,
+          icone: it.icone || (pad === "op" ? "💡" : pad === "ri" ? "⚠️" : "🎯"),
+          titulo: it.titulo,
+          descricao: it.descricao,
+          prioridade: it.prioridade,
+          acao: it.acao || { label: "Abrir", href: "/dashboard" },
+        }));
+      setOportunidades(mapIA(respIA.oportunidades, "op"));
+      setRiscos(mapIA(respIA.riscos, "ri"));
+      setAcoes(mapIA(respIA.acoes, "ac"));
+      setResumoIA(respIA.resumo || "");
+      setFonte("ia");
+      setCarregando(false);
+      return;
+    }
+
+    // Fallback heuristico
+    setFonte("heuristica");
+    setResumoIA("");
     const oport: Item[] = [];
     const risc: Item[] = [];
     const ac: Item[] = [];
@@ -338,7 +463,11 @@ export default function IaOperacionalPage() {
       <PageHeader
         titulo="IA Operacional"
         icone="🤖"
-        subtitulo="Recomendações baseadas em benchmarks da operação"
+        subtitulo={
+          fonte === "ia"
+            ? "Diagnostico Claude Haiku sobre dados da fazenda"
+            : "Heuristicas locais (IA indisponivel no momento)"
+        }
         acoes={<FazendaSelector onChange={(id) => setFazendaSel(id)} />}
       />
 
@@ -377,12 +506,25 @@ export default function IaOperacionalPage() {
         className="rounded-ja-lg p-5 text-white flex items-center gap-3"
         style={{ background: "linear-gradient(135deg,#16a34a 0%,#22c55e 100%)" }}
       >
-        <span style={{ fontSize: 42 }}>🧠</span>
-        <div>
-          <div className="text-xs uppercase tracking-wider opacity-85">Diagnóstico geral</div>
-          <div style={{ fontSize: 18, fontWeight: 800 }}>
-            {oportunidades.length} oportunidades · {riscos.length} riscos · {acoes.length} ações prioritárias
+        <span style={{ fontSize: 42 }}>{fonte === "ia" ? "🧠" : "📊"}</span>
+        <div className="flex-1">
+          <div className="text-xs uppercase tracking-wider opacity-85 flex items-center gap-2">
+            Diagnostico geral
+            <span
+              className="px-2 py-0.5 rounded text-[10px] font-semibold"
+              style={{ background: "rgba(255,255,255,0.25)" }}
+            >
+              {fonte === "ia" ? "Claude Haiku" : "Heuristica local"}
+            </span>
           </div>
+          <div style={{ fontSize: 18, fontWeight: 800 }}>
+            {oportunidades.length} oportunidades · {riscos.length} riscos · {acoes.length} acoes prioritarias
+          </div>
+          {resumoIA && (
+            <div className="text-xs opacity-90 mt-1" style={{ maxWidth: 720 }}>
+              {resumoIA}
+            </div>
+          )}
         </div>
       </div>
 

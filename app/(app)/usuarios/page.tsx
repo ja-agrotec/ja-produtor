@@ -280,25 +280,22 @@ export default function UsuariosPage() {
   }
 
   function resetSenha(u: UsuarioRow) {
-    // Tenta usar o método oficial do Supabase de reset por email
     const sb = getSupabase();
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/reset-senha`
+        : undefined;
     sb.auth
-      .resetPasswordForEmail(u.email)
+      .resetPasswordForEmail(u.email, redirectTo ? { redirectTo } : undefined)
       .then((r) => {
         if (r.error) {
-          toast.message("Em breve", {
-            description:
-              "Não foi possível disparar o reset automaticamente. Avise o admin para regenerar a senha do usuário.",
-          });
+          toast.error("Erro ao enviar: " + r.error.message);
           return;
         }
         toast.success("E-mail de reset enviado para " + u.email);
       })
-      .catch(() => {
-        toast.message("Em breve", {
-          description:
-            "Reset de senha via interface ainda em implantação. Use o painel Supabase ou contate o admin.",
-        });
+      .catch((e) => {
+        toast.error("Erro ao enviar reset: " + (e?.message || "tente novamente"));
       });
   }
 

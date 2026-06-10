@@ -96,3 +96,16 @@
 .kpi-accent.red    { background: var(--danger); }
 .kpi-accent.blue   { background: var(--info); }
 .kpi-accent.purple { background: #6a1b9a; }
+
+/* Tipografia das paginas legais (Termos, Privacidade) */
+.prose-legal { color: var(--text); line-height: 1.7; }
+.prose-legal h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; color: var(--dark); }
+.prose-legal h2 { font-size: 20px; font-weight: 700; margin-top: 28px; margin-bottom: 10px; color: var(--dark); }
+.prose-legal h3 { font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--text); }
+.prose-legal p  { margin: 10px 0; }
+.prose-legal ul { margin: 8px 0 8px 22px; list-style: disc; }
+.prose-legal li { margin: 4px 0; }
+.prose-legal a  { color: var(--green); text-decoration: underline; }
+.prose-legal a:hover { color: var(--green-dark, #2d7d32); }
+.prose-legal code { background: var(--green-bg); padding: 1px 6px; border-radius: 4px; font-size: 13px; }
+.prose-legal hr { margin: 24px 0; border: none; border-top: 1px solid var(--brd); }

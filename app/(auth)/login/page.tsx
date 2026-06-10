@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -102,8 +103,20 @@ export default function LoginPage() {
           </button>
         </form>
 
+        <p className="text-center text-sm mt-4">
+          <Link href="/esqueci-senha" style={{ color: "var(--green)" }}>
+            Esqueci minha senha
+          </Link>
+        </p>
+
         <p className="text-center text-xs mt-6" style={{ color: "var(--dim)" }}>
           Acesso restrito. Solicite seu usuário ao administrador da fazenda.
+        </p>
+
+        <p className="text-center text-xs mt-4 pt-4" style={{ color: "var(--dim)", borderTop: "1px solid var(--brd)" }}>
+          <Link href="/termos" style={{ color: "var(--muted)" }}>Termos de uso</Link>
+          {" · "}
+          <Link href="/privacidade" style={{ color: "var(--muted)" }}>Privacidade</Link>
         </p>
       </div>
     </main>

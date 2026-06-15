@@ -23,13 +23,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       const sb = getSupabase();
       const r = await sb
         .from("usuarios")
-        .select("ativo")
+        .select("ativo, role")
         .eq("auth_id", user.id)
         .maybeSingle();
       if (r.data && r.data.ativo === false) {
         await sb.auth.signOut();
         router.push("/login?inativo=1");
         return;
+      }
+      // Onboarding: se admin/gerente nao tem fazenda cadastrada e nao
+      // esta na propria tela de onboarding, redireciona pra wizard.
+      // Operador nao recebe onboarding (acessa /operador, ja tem fazenda).
+      const role = r.data?.role;
+      if (
+        pathname !== "/onboarding" &&
+        pathname !== "/operador" &&
+        !pathname.startsWith("/operador/") &&
+        role !== "operador"
+      ) {
+        let pulou = false;
+        try {
+          pulou = typeof window !== "undefined" && localStorage.getItem("ja_onboarding_pulado") === "1";
+        } catch { /* ignore */ }
+        if (!pulou) {
+          const f = await sb.from("fazendas").select("id", { count: "exact", head: true });
+          const semFazenda = !f.error && (f.count ?? 0) === 0;
+          if (semFazenda) {
+            router.push("/onboarding");
+            return;
+          }
+        }
       }
       setVerificando(false);
     })();

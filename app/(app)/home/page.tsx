@@ -4,6 +4,7 @@
 // Portado de modules/admin-home.js (legado HTML+JS).
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import type { Fazenda, Insumo, Safra, Lancamento, VendaGraos } from "@/lib/types";
@@ -402,6 +403,14 @@ export default function HomePage() {
         </div>
       </div>
 
+      {/* Checklist de inicio (so aparece enquanto algum item esta faltando) */}
+      <ChecklistInicio
+        temFazenda={fazendasAtivas > 0}
+        temTalhao={talhoesAtivos > 0}
+        temSafra={safrasAbertas > 0}
+        temLancamento={ultimosLanc.length > 0}
+      />
+
       {/* Previsao 5 dias */}
       {previsao.length > 0 && (
         <div className="card">
@@ -691,6 +700,80 @@ export default function HomePage() {
             </div>
           )}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function ChecklistInicio({
+  temFazenda,
+  temTalhao,
+  temSafra,
+  temLancamento,
+}: {
+  temFazenda: boolean;
+  temTalhao: boolean;
+  temSafra: boolean;
+  temLancamento: boolean;
+}) {
+  const itens = [
+    { ok: true, label: "Conta criada", href: null },
+    { ok: temFazenda, label: "Cadastrar fazenda", href: "/fazendas" },
+    { ok: temTalhao, label: "Cadastrar talhao", href: "/talhoes" },
+    { ok: temSafra, label: "Criar safra", href: "/safras" },
+    { ok: temLancamento, label: "Primeiro lancamento", href: "/lancamentos" },
+  ];
+  const total = itens.length;
+  const concluidos = itens.filter((i) => i.ok).length;
+  if (concluidos === total) return null; // some quando 100%
+
+  return (
+    <div className="card" style={{ borderLeft: "4px solid var(--green)" }}>
+      <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+        <h3 style={{ margin: 0 }}>🚀 Comece por aqui</h3>
+        <span className="text-xs font-semibold" style={{ color: "var(--green)" }}>
+          {concluidos} de {total}
+        </span>
+      </div>
+      <div className="w-full h-2 rounded-full mb-3" style={{ background: "var(--brd)" }}>
+        <div
+          className="h-full rounded-full transition-all"
+          style={{ width: `${(concluidos / total) * 100}%`, background: "var(--green)" }}
+        />
+      </div>
+      <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+        {itens.map((it) => {
+          const content = (
+            <span className="flex items-center gap-2 text-sm">
+              <span style={{ fontSize: 18 }}>{it.ok ? "✅" : "⬜"}</span>
+              <span
+                style={{
+                  color: it.ok ? "var(--muted)" : "var(--text)",
+                  textDecoration: it.ok ? "line-through" : "none",
+                }}
+              >
+                {it.label}
+              </span>
+            </span>
+          );
+          if (it.href && !it.ok) {
+            return (
+              <Link
+                key={it.label}
+                href={it.href}
+                className="px-2 py-1 rounded hover:bg-ja-green-bg"
+                style={{ color: "var(--text)" }}
+              >
+                {content}
+              </Link>
+            );
+          }
+          return (
+            <div key={it.label} className="px-2 py-1">
+              {content}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -7,9 +7,19 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 
 type NavItem = { href: string; label: string; icon: string };
-type NavGroup = { id: string; label: string; icon: string; items: NavItem[] };
+type NavGroup = { id: string; label: string; icon: string; items: NavItem[]; adminOnly?: boolean };
 
 const GROUPS: NavGroup[] = [
+  {
+    id: "admin",
+    label: "Administracao",
+    icon: "🛡️",
+    adminOnly: true,
+    items: [
+      { href: "/admin",     label: "Painel Admin",  icon: "🛡️" },
+      { href: "/usuarios",  label: "Usuarios",      icon: "👤" },
+    ],
+  },
   {
     id: "inicio",
     label: "Início",
@@ -121,6 +131,7 @@ export default function AppSidebar({ mobileOpen = false, onClose }: Props) {
   const router = useRouter();
   const { user } = useAuth();
   const [nome, setNome] = useState<string>("");
+  const [role, setRole] = useState<string>("");
   const [expandidos, setExpandidos] = useState<Record<string, boolean>>(() => {
     // Inicia com todos os grupos que contem a rota ativa expandidos
     const init: Record<string, boolean> = {};
@@ -139,10 +150,11 @@ export default function AppSidebar({ mobileOpen = false, onClose }: Props) {
     (async () => {
       const r = await supabase
         .from("usuarios")
-        .select("nome")
+        .select("nome, role")
         .eq("auth_id", user.id)
         .maybeSingle();
       if (active && r.data?.nome) setNome(r.data.nome);
+      if (active && r.data?.role) setRole(r.data.role);
     })();
     return () => { active = false; };
   }, [user]);
@@ -195,7 +207,7 @@ export default function AppSidebar({ mobileOpen = false, onClose }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
-        {GROUPS.map((g) => {
+        {GROUPS.filter((g) => !g.adminOnly || role === "admin").map((g) => {
           const hasActive = g.items.some((it) => pathname === it.href || pathname?.startsWith(it.href + "/"));
           const aberto = !!expandidos[g.id];
           return (

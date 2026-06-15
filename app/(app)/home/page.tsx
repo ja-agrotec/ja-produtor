@@ -403,13 +403,17 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Checklist de inicio (so aparece enquanto algum item esta faltando) */}
-      <ChecklistInicio
-        temFazenda={fazendasAtivas > 0}
-        temTalhao={talhoesAtivos > 0}
-        temSafra={safrasAbertas > 0}
-        temLancamento={ultimosLanc.length > 0}
-      />
+      {/* Checklist de inicio - so aparece depois que terminou de carregar
+          (evita race de mostrar "Cadastrar fazenda" enquanto rFaz ainda nao
+          retornou). Componente filho ja some quando tudo estiver concluido. */}
+      {!carregando && (
+        <ChecklistInicio
+          temFazenda={fazendasAtivas > 0}
+          temTalhao={talhoesAtivos > 0}
+          temSafra={safrasAbertas > 0}
+          temLancamento={ultimosLanc.length > 0}
+        />
+      )}
 
       {/* Previsao 5 dias */}
       {previsao.length > 0 && (

@@ -94,19 +94,34 @@ export default function AdminPage() {
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
       const dataLim = trintaDiasAtras.toISOString();
 
-      const [rUsu, rFaz, rSaf, rLan, rPla, rPlaUso] = await Promise.all([
+      const [rUsu, rFaz, rSaf, rLan, rPla] = await Promise.all([
         sb.from("usuarios").select("id, nome, email, role, fazenda_id, ativo, ultimo_acesso, criado_em, plano_id").order("criado_em", { ascending: false }),
         sb.from("fazendas").select("id, nome, cidade, estado, area_total_ha, criado_em").eq("ativo", true).order("nome"),
         sb.from("safras").select("id", { count: "exact", head: true }).eq("status", "aberta"),
         sb.from("lancamentos").select("id", { count: "exact", head: true }).gte("data_lancamento", dataLim.substring(0, 10)),
         listarPlanos(),
-        sb.from("v_planos_uso").select("id, codigo, nome, max_fazendas, usuarios_no_plano").order("ordem"),
       ]);
-      setPlanos(rPla as Plano[]);
-      setPlanosUso((rPlaUso.data || []) as PlanoUso[]);
+      const planosLista = rPla as Plano[];
+      setPlanos(planosLista);
 
       const usuarios = (rUsu.data || []) as UsuarioRow[];
       const fz = (rFaz.data || []) as FazendaRow[];
+
+      // Distribuicao por plano agregada no client (sem depender de view RLS)
+      const contagem: Record<string, number> = {};
+      usuarios.forEach((u) => {
+        if (!u.ativo || !u.plano_id) return;
+        contagem[u.plano_id] = (contagem[u.plano_id] || 0) + 1;
+      });
+      setPlanosUso(
+        planosLista.map((p) => ({
+          id: p.id,
+          codigo: p.codigo,
+          nome: p.nome,
+          max_fazendas: p.max_fazendas,
+          usuarios_no_plano: contagem[p.id] || 0,
+        })),
+      );
 
       setKpis({
         totalUsuarios: usuarios.length,

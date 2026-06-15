@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { getSupabase } from "@/lib/supabase";
 import AppSidebar from "@/components/AppSidebar";
@@ -92,12 +93,36 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
             <span className="font-display font-semibold text-sm">AGROTEC</span>
           </div>
-          <div className="w-9" />
+          <Link
+            href="/guia"
+            className="p-2 -mr-2 rounded-lg hover:bg-ja-green-bg flex items-center justify-center"
+            aria-label="Guia do usuario"
+            style={{ fontSize: 18 }}
+          >
+            ❓
+          </Link>
         </header>
 
         <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-full overflow-x-hidden">
           {children}
         </main>
+
+        {/* Botao flutuante de ajuda (desktop) - visivel em todas as paginas
+            exceto onboarding, pra nao confundir no primeiro acesso */}
+        {pathname !== "/onboarding" && (
+          <Link
+            href="/guia"
+            className="hidden lg:flex fixed bottom-6 right-6 z-30 rounded-full shadow-lg items-center justify-center hover:scale-105 transition-transform"
+            style={{
+              width: 52, height: 52,
+              background: "var(--green)", color: "white", fontSize: 24,
+            }}
+            aria-label="Abrir guia do usuario"
+            title="Guia do usuario"
+          >
+            ❓
+          </Link>
+        )}
       </div>
     </div>
   );

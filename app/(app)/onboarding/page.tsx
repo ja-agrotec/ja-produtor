@@ -22,6 +22,7 @@ export default function OnboardingPage() {
 
   const [passo, setPasso] = useState<Passo>("boas-vindas");
   const [salvando, setSalvando] = useState(false);
+  const [aceiteTermos, setAceiteTermos] = useState(false);
 
   // IDs criados a cada passo (precisamos pra criar o filho)
   const [fazendaId, setFazendaId] = useState<string>("");
@@ -68,6 +69,7 @@ export default function OnboardingPage() {
   const progresso = (idxAtual / (ORDEM.length - 1)) * 100;
 
   function podeAvancar(): boolean {
+    if (passo === "boas-vindas") return aceiteTermos;
     if (passo === "fazenda") return fazNome.trim().length > 0;
     if (passo === "talhao") return talNome.trim().length > 0 && !!talArea && Number(talArea) > 0;
     if (passo === "safra") return safNome.trim().length > 0 && !!safCultura;
@@ -76,6 +78,15 @@ export default function OnboardingPage() {
 
   async function avancar() {
     if (passo === "boas-vindas") {
+      if (!aceiteTermos) return;
+      // Registra aceite no banco
+      const sb = getSupabase();
+      if (user) {
+        await sb
+          .from("usuarios")
+          .update({ termos_aceitos_em: new Date().toISOString() })
+          .eq("auth_id", user.id);
+      }
       setPasso("fazenda");
       return;
     }
@@ -214,7 +225,10 @@ export default function OnboardingPage() {
 
         <div className="card">
           {passo === "boas-vindas" && (
-            <PassoBoasVindas />
+            <PassoBoasVindas
+              aceiteTermos={aceiteTermos}
+              setAceiteTermos={setAceiteTermos}
+            />
           )}
 
           {passo === "fazenda" && (
@@ -284,35 +298,93 @@ export default function OnboardingPage() {
   );
 }
 
-function PassoBoasVindas() {
+function PassoBoasVindas({
+  aceiteTermos,
+  setAceiteTermos,
+}: {
+  aceiteTermos: boolean;
+  setAceiteTermos: (v: boolean) => void;
+}) {
   return (
-    <div className="text-center">
-      <div style={{ fontSize: 64 }}>🌾</div>
-      <h1 className="font-display text-2xl mt-2" style={{ color: "var(--dark)" }}>
-        Bem-vindo ao JA Agrotec
-      </h1>
-      <p className="text-sm mt-2 mb-4" style={{ color: "var(--muted)" }}>
-        Em 3 passos rapidos voce vai cadastrar sua primeira fazenda, um talhao
-        e uma safra. Depois disso, lancamentos, vendas, IA e cotacoes ja
-        funcionam pra voce.
-      </p>
-      <div className="grid grid-cols-3 gap-2 text-xs mt-6" style={{ color: "var(--muted)" }}>
-        <div className="text-center">
-          <div style={{ fontSize: 32 }}>🏞️</div>
-          <div className="mt-1 font-semibold">1. Fazenda</div>
-          <div>Nome e localizacao</div>
+    <div>
+      <div className="text-center mb-4">
+        <div style={{ fontSize: 64 }}>🌾</div>
+        <h1 className="font-display text-2xl mt-2" style={{ color: "var(--dark)" }}>
+          Bem-vindo ao JA Agrotec
+        </h1>
+        <p className="text-sm mt-2" style={{ color: "var(--muted)" }}>
+          Sua plataforma de gestao agropecuaria pronta pra usar.
+        </p>
+      </div>
+
+      <div
+        className="rounded-ja p-4 mb-4"
+        style={{ background: "var(--green-bg)" }}
+      >
+        <div className="font-semibold mb-2" style={{ color: "var(--dark)" }}>
+          📌 Como o sistema funciona
         </div>
-        <div className="text-center">
-          <div style={{ fontSize: 32 }}>📐</div>
-          <div className="mt-1 font-semibold">2. Talhao</div>
-          <div>Area e cultura</div>
+        <ul className="text-sm space-y-1.5" style={{ color: "var(--muted)" }}>
+          <li>🏞️ <b>Fazenda</b> e sua propriedade rural cadastrada</li>
+          <li>📐 <b>Talhoes</b> sao as areas de plantio dentro da fazenda</li>
+          <li>🌱 <b>Safra</b> agrupa lancamentos, custos e receitas do mesmo ciclo</li>
+          <li>📋 <b>Lancamentos</b> registram cada despesa (insumo, mao-de-obra) e receita</li>
+          <li>💵 <b>Vendas</b> controlam contratos de graos e entregas</li>
+          <li>📈 <b>Fechamento</b> apura ROI, custo/ha e gera PDF da safra</li>
+        </ul>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="text-center p-2 rounded" style={{ background: "var(--green-bg)" }}>
+          <div style={{ fontSize: 28 }}>🤖</div>
+          <div className="text-xs font-semibold mt-1">IA Operacional</div>
+          <div className="text-xs" style={{ color: "var(--muted)" }}>Recomendacoes automaticas</div>
         </div>
-        <div className="text-center">
-          <div style={{ fontSize: 32 }}>🌱</div>
-          <div className="mt-1 font-semibold">3. Safra</div>
-          <div>Cultura e plantio</div>
+        <div className="text-center p-2 rounded" style={{ background: "var(--green-bg)" }}>
+          <div style={{ fontSize: 28 }}>💹</div>
+          <div className="text-xs font-semibold mt-1">Cotacoes</div>
+          <div className="text-xs" style={{ color: "var(--muted)" }}>CBOT/B3 em tempo real</div>
+        </div>
+        <div className="text-center p-2 rounded" style={{ background: "var(--green-bg)" }}>
+          <div style={{ fontSize: 28 }}>📱</div>
+          <div className="text-xs font-semibold mt-1">Offline</div>
+          <div className="text-xs" style={{ color: "var(--muted)" }}>App de campo sincroniza</div>
         </div>
       </div>
+
+      <div
+        className="rounded-ja p-3 text-xs"
+        style={{ background: "#fff8e1", border: "1px solid #ffe082", color: "#5d4037" }}
+      >
+        Nos proximos 3 passos voce cria sua primeira fazenda, talhao e safra.
+        Leva 1 minuto. Depois disso, todas as funcionalidades estao liberadas.
+      </div>
+
+      <label
+        className="flex items-start gap-2 mt-4 p-3 rounded cursor-pointer"
+        style={{
+          background: aceiteTermos ? "var(--green-bg)" : "#fafafa",
+          border: `1px solid ${aceiteTermos ? "var(--green)" : "var(--brd)"}`,
+        }}
+      >
+        <input
+          type="checkbox"
+          checked={aceiteTermos}
+          onChange={(e) => setAceiteTermos(e.target.checked)}
+          style={{ marginTop: 3, accentColor: "var(--green)" }}
+        />
+        <span className="text-sm" style={{ color: "var(--text)" }}>
+          Li e aceito os{" "}
+          <Link href="/termos" target="_blank" style={{ color: "var(--green)", textDecoration: "underline" }}>
+            Termos de Uso
+          </Link>
+          {" "}e a{" "}
+          <Link href="/privacidade" target="_blank" style={{ color: "var(--green)", textDecoration: "underline" }}>
+            Politica de Privacidade
+          </Link>
+          {" "}(LGPD).
+        </span>
+      </label>
     </div>
   );
 }

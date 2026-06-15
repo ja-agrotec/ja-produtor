@@ -111,6 +111,7 @@ const GROUPS: NavGroup[] = [
     label: "Sobre",
     icon: "ℹ️",
     items: [
+      { href: "/guia",                  label: "Guia do usuario",     icon: "📖" },
       { href: "/sobre",                 label: "Sobre o JA Agrotec",  icon: "🌾" },
       { href: "/sobre/historia",        label: "História",            icon: "📖" },
       { href: "/sobre/ajuda",           label: "Ajuda",               icon: "❓" },

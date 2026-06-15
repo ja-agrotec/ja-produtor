@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import type { Usuario, Fazenda, Role } from "@/lib/types";
 import { fmtData } from "@/lib/format";
@@ -37,8 +38,8 @@ const FORM_VAZIO: Form = {
   cargo: "",
 };
 
+// Membros da fazenda - admin nao aparece (esse perfil e criado em /clientes)
 const ROLES: { value: Role; label: string; hint: string }[] = [
-  { value: "admin", label: "Admin da fazenda", hint: "Acesso total dentro da fazenda" },
   { value: "gerente", label: "Gerente", hint: "Dashboard (leitura)" },
   { value: "operador", label: "Operador", hint: "Só app de campo" },
   { value: "visualizador", label: "Visualizador", hint: "Somente leitura" },
@@ -62,6 +63,10 @@ function roleBadge(r: Role) {
 }
 
 export default function UsuariosPage() {
+  const { user } = useAuth();
+  const [eSuperadmin, setESuperadmin] = useState(false);
+  const [fazendaDoAdmin, setFazendaDoAdmin] = useState<string | null>(null);
+
   const [itens, setItens] = useState<UsuarioRow[]>([]);
   const [fazendas, setFazendas] = useState<Pick<Fazenda, "id" | "nome">[]>([]);
 
@@ -91,7 +96,20 @@ export default function UsuariosPage() {
 
   useEffect(() => {
     carregarFazendas();
-  }, []);
+    if (!user) return;
+    (async () => {
+      const sb = getSupabase();
+      const r = await sb
+        .from("usuarios")
+        .select("role, fazenda_id")
+        .eq("auth_id", user.id)
+        .maybeSingle();
+      if (r.data) {
+        setESuperadmin(r.data.role === "superadmin");
+        setFazendaDoAdmin(r.data.fazenda_id);
+      }
+    })();
+  }, [user]);
 
   useEffect(() => {
     carregar();
@@ -111,9 +129,12 @@ export default function UsuariosPage() {
   async function carregar() {
     setCarregando(true);
     const sb = getSupabase();
+    // Membros = gerente/operador/visualizador. Donos (admin/superadmin)
+    // vivem em /clientes e nao aparecem aqui pra evitar confusao.
     let q = sb
       .from("usuarios")
       .select("*, fazendas(nome)")
+      .in("role", ["gerente", "operador", "visualizador"])
       .order("nome");
 
     if (buscaDeb)
@@ -134,13 +155,18 @@ export default function UsuariosPage() {
   }
 
   const totalAtivos = useMemo(() => itens.filter((u) => u.ativo).length, [itens]);
-  const totalAdmins = useMemo(
-    () => itens.filter((u) => u.role === "admin").length,
+  const totalOperadores = useMemo(
+    () => itens.filter((u) => u.role === "operador").length,
     [itens],
   );
 
   function abrirNovo() {
-    setForm({ ...FORM_VAZIO, senha_inicial: gerarSenha() });
+    setForm({
+      ...FORM_VAZIO,
+      senha_inicial: gerarSenha(),
+      // Admin nao-superadmin so pode criar membros DENTRO da fazenda dele
+      fazenda_id: !eSuperadmin && fazendaDoAdmin ? fazendaDoAdmin : "",
+    });
     setEditando(null);
     setSenhaGerada(null);
     setNovoOpen(true);
@@ -307,12 +333,12 @@ export default function UsuariosPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        titulo="Usuários"
+        titulo="Membros da fazenda"
         icone="👥"
-        subtitulo="Gestão de acessos do sistema"
+        subtitulo="Gerentes, operadores e visualizadores. Donos de fazenda ficam em /clientes."
         acoes={
           <button className="btn-primary" onClick={abrirNovo}>
-            + Novo Usuário
+            + Novo Membro
           </button>
         }
       />
@@ -320,7 +346,7 @@ export default function UsuariosPage() {
       <div className="grid-cards">
         <KpiCard rotulo="Listados" valor={itens.length} icone="👥" accent="green" />
         <KpiCard rotulo="Ativos (página)" valor={totalAtivos} icone="✅" accent="blue" />
-        <KpiCard rotulo="Admins (página)" valor={totalAdmins} icone="🛡️" accent="purple" />
+        <KpiCard rotulo="Operadores (página)" valor={totalOperadores} icone="👷" accent="purple" />
       </div>
 
       <div className="card flex flex-wrap gap-3 items-center">
@@ -687,6 +713,8 @@ export default function UsuariosPage() {
                   onChange={(e) =>
                     setForm({ ...form, fazenda_id: e.target.value })
                   }
+                  disabled={!eSuperadmin && !!fazendaDoAdmin}
+                  title={!eSuperadmin && !!fazendaDoAdmin ? "Membros sao sempre da sua fazenda" : undefined}
                 >
                   <option value="">Selecione</option>
                   {fazendas.map((f) => (
@@ -695,6 +723,11 @@ export default function UsuariosPage() {
                     </option>
                   ))}
                 </select>
+                {!eSuperadmin && fazendaDoAdmin && (
+                  <div className="text-xs mt-1" style={{ color: "var(--dim)" }}>
+                    Membros sao sempre cadastrados na sua propria fazenda.
+                  </div>
+                )}
               </div>
             </div>
 

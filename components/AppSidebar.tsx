@@ -17,6 +17,7 @@ const GROUPS: NavGroup[] = [
     superadminOnly: true,
     items: [
       { href: "/admin",     label: "Painel Admin",  icon: "🛡️" },
+      { href: "/clientes",  label: "Clientes",      icon: "🤝" },
     ],
   },
   {
@@ -102,7 +103,7 @@ const GROUPS: NavGroup[] = [
     label: "Configurações",
     icon: "⚙️",
     items: [
-      { href: "/usuarios",          label: "Usuários",            icon: "👤" },
+      { href: "/usuarios",          label: "Membros da Fazenda",  icon: "👤" },
     ],
   },
   {

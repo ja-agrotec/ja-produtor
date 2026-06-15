@@ -2,10 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { getSupabase } from "@/lib/supabase";
+import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import type { Fazenda } from "@/lib/types";
 import { fmt } from "@/lib/format";
 import { ITENS_POR_PAGINA, DEBOUNCE_MS, ESTADOS_BR, debounce } from "@/lib/utils";
+import { statusLimiteFazendas, type StatusLimite } from "@/lib/limites";
 import PageHeader from "@/components/ui/PageHeader";
 import EmptyState from "@/components/ui/EmptyState";
 import KpiCard from "@/components/ui/KpiCard";
@@ -51,6 +53,14 @@ export default function FazendasPage() {
   const [form, setForm] = useState<Form>(FORM_VAZIO);
   const [salvando, setSalvando] = useState(false);
   const [confirmar, setConfirmar] = useState<{ id: string; nome: string; ativar: boolean } | null>(null);
+
+  const { user } = useAuth();
+  const [limite, setLimite] = useState<StatusLimite | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    statusLimiteFazendas(user.id).then(setLimite);
+  }, [user, itens.length]);
 
   useEffect(() => {
     const fn = debounce((v: string) => setBuscaDeb(v), DEBOUNCE_MS);
@@ -115,6 +125,10 @@ export default function FazendasPage() {
   const totalAtivas = useMemo(() => itens.filter((f) => f.ativo).length, [itens]);
 
   function abrirNovo() {
+    if (limite && !limite.podeCriar) {
+      toast.error(limite.motivo || "Limite do plano atingido");
+      return;
+    }
     setForm(FORM_VAZIO);
     setEditando(null);
     setNovoOpen(true);
@@ -161,7 +175,22 @@ export default function FazendasPage() {
     if (editando) {
       r = await sb.from("fazendas").update(payload).eq("id", editando.id);
     } else {
-      r = await sb.from("fazendas").insert({ ...payload, ativo: true });
+      // Re-checa limite no momento do save (UI pode ter ficado desatualizada)
+      if (user) {
+        const stat = await statusLimiteFazendas(user.id);
+        if (!stat.podeCriar) {
+          setSalvando(false);
+          toast.error(stat.motivo || "Limite do plano atingido");
+          return;
+        }
+      }
+      // Pega usuarios.id pra preencher criado_por
+      let criadoPor: string | null = null;
+      if (user) {
+        const rU = await sb.from("usuarios").select("id").eq("auth_id", user.id).maybeSingle();
+        criadoPor = rU.data?.id || null;
+      }
+      r = await sb.from("fazendas").insert({ ...payload, ativo: true, criado_por: criadoPor });
     }
     setSalvando(false);
     if (r.error) {
@@ -196,11 +225,48 @@ export default function FazendasPage() {
         icone="🏡"
         subtitulo="Cadastro de fazendas e propriedades"
         acoes={
-          <button className="btn-primary" onClick={abrirNovo}>
+          <button
+            className="btn-primary"
+            onClick={abrirNovo}
+            disabled={limite ? !limite.podeCriar : false}
+            title={limite && !limite.podeCriar ? limite.motivo : undefined}
+          >
             + Nova Fazenda
           </button>
         }
       />
+
+      {limite && limite.plano && (
+        <div
+          className="card flex items-center justify-between flex-wrap gap-2"
+          style={{
+            borderLeft: `4px solid ${limite.podeCriar ? "var(--green)" : "var(--warn)"}`,
+          }}
+        >
+          <div>
+            <div className="text-xs" style={{ color: "var(--muted)" }}>
+              Plano atual
+            </div>
+            <div className="font-semibold">
+              {limite.plano.nome}
+              {" "}
+              <span style={{ color: "var(--muted)", fontWeight: 400 }}>
+                · {limite.usado} de{" "}
+                {limite.limite === null ? "ilimitado" : limite.limite} fazenda(s)
+              </span>
+            </div>
+          </div>
+          {!limite.podeCriar && (
+            <a
+              href="mailto:contato@ja-agrotec.com.br?subject=Upgrade%20de%20plano"
+              className="btn-ghost"
+              style={{ fontSize: 13 }}
+            >
+              Solicitar upgrade →
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="grid-cards">
         <KpiCard rotulo="Fazendas listadas" valor={itens.length} icone="🏡" accent="green" />

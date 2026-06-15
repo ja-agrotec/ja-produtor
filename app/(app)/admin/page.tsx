@@ -9,6 +9,8 @@ import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 import { fmtData, fmtInt } from "@/lib/format";
+import { listarPlanos, type Plano } from "@/lib/limites";
+import { toast } from "sonner";
 import PageHeader from "@/components/ui/PageHeader";
 import KpiCard from "@/components/ui/KpiCard";
 
@@ -27,6 +29,15 @@ type UsuarioRow = {
   ativo: boolean;
   ultimo_acesso: string | null;
   criado_em: string;
+  plano_id: string | null;
+};
+
+type PlanoUso = {
+  id: string;
+  codigo: string;
+  nome: string;
+  max_fazendas: number | null;
+  usuarios_no_plano: number;
 };
 
 type FazendaRow = {
@@ -56,6 +67,8 @@ export default function AdminPage() {
   const [fazendas, setFazendas] = useState<FazendaRow[]>([]);
   const [saude, setSaude] = useState<Saude>(null);
   const [iaOk, setIaOk] = useState<boolean | null>(null);
+  const [planos, setPlanos] = useState<Plano[]>([]);
+  const [planosUso, setPlanosUso] = useState<PlanoUso[]>([]);
 
   // Verifica role
   useEffect(() => {
@@ -81,12 +94,16 @@ export default function AdminPage() {
       trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
       const dataLim = trintaDiasAtras.toISOString();
 
-      const [rUsu, rFaz, rSaf, rLan] = await Promise.all([
-        sb.from("usuarios").select("id, nome, email, role, fazenda_id, ativo, ultimo_acesso, criado_em").order("criado_em", { ascending: false }),
+      const [rUsu, rFaz, rSaf, rLan, rPla, rPlaUso] = await Promise.all([
+        sb.from("usuarios").select("id, nome, email, role, fazenda_id, ativo, ultimo_acesso, criado_em, plano_id").order("criado_em", { ascending: false }),
         sb.from("fazendas").select("id, nome, cidade, estado, area_total_ha, criado_em").eq("ativo", true).order("nome"),
         sb.from("safras").select("id", { count: "exact", head: true }).eq("status", "aberta"),
         sb.from("lancamentos").select("id", { count: "exact", head: true }).gte("data_lancamento", dataLim.substring(0, 10)),
+        listarPlanos(),
+        sb.from("v_planos_uso").select("id, codigo, nome, max_fazendas, usuarios_no_plano").order("ordem"),
       ]);
+      setPlanos(rPla as Plano[]);
+      setPlanosUso((rPlaUso.data || []) as PlanoUso[]);
 
       const usuarios = (rUsu.data || []) as UsuarioRow[];
       const fz = (rFaz.data || []) as FazendaRow[];
@@ -100,11 +117,24 @@ export default function AdminPage() {
         safrasAtivas: rSaf.count ?? 0,
         lancamentos30d: rLan.count ?? 0,
       });
-      setUsuariosRecentes(usuarios.slice(0, 10));
+      setUsuariosRecentes(usuarios.slice(0, 20));
       setFazendas(fz);
       setCarregando(false);
     })();
   }, [autorizado]);
+
+  async function trocarPlano(usuarioId: string, novoPlanoId: string) {
+    const sb = getSupabase();
+    const r = await sb.from("usuarios").update({ plano_id: novoPlanoId }).eq("id", usuarioId);
+    if (r.error) {
+      toast.error("Erro ao trocar plano: " + r.error.message);
+      return;
+    }
+    toast.success("Plano atualizado");
+    setUsuariosRecentes((arr) =>
+      arr.map((u) => (u.id === usuarioId ? { ...u, plano_id: novoPlanoId } : u)),
+    );
+  }
 
   // Healthcheck (em paralelo)
   useEffect(() => {
@@ -222,6 +252,24 @@ export default function AdminPage() {
         </div>
       ) : (
         <>
+          {/* Distribuicao por plano */}
+          {planosUso.length > 0 && (
+            <div className="card">
+              <h3 className="mb-3">Distribuicao por plano</h3>
+              <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
+                {planosUso.map((p) => (
+                  <div key={p.id} className="px-3 py-2 rounded" style={{ background: "var(--green-bg)" }}>
+                    <div className="text-xs" style={{ color: "var(--muted)" }}>{p.nome}</div>
+                    <div className="font-semibold text-lg">{p.usuarios_no_plano}</div>
+                    <div className="text-xs" style={{ color: "var(--dim)" }}>
+                      Limite: {p.max_fazendas === null ? "ilimitado" : `${p.max_fazendas} fazenda(s)`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Ultimos usuarios */}
           <div className="card">
             <div className="flex items-center justify-between mb-3">
@@ -237,6 +285,7 @@ export default function AdminPage() {
                     <th>Nome</th>
                     <th>E-mail</th>
                     <th>Role</th>
+                    <th>Plano</th>
                     <th>Status</th>
                     <th>Ultimo acesso</th>
                     <th>Cadastro</th>
@@ -245,7 +294,7 @@ export default function AdminPage() {
                 <tbody>
                   {usuariosRecentes.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ color: "var(--muted)", textAlign: "center" }}>
+                      <td colSpan={7} style={{ color: "var(--muted)", textAlign: "center" }}>
                         Nenhum usuario cadastrado.
                       </td>
                     </tr>
@@ -255,6 +304,21 @@ export default function AdminPage() {
                         <td>{u.nome}</td>
                         <td>{u.email}</td>
                         <td><span className="badge badge-info">{u.role}</span></td>
+                        <td>
+                          <select
+                            className="input"
+                            style={{ padding: "4px 8px", fontSize: 12, minWidth: 120 }}
+                            value={u.plano_id || ""}
+                            onChange={(e) => trocarPlano(u.id, e.target.value)}
+                          >
+                            <option value="">(sem plano)</option>
+                            {planos.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.nome} ({p.max_fazendas === null ? "ilim" : p.max_fazendas})
+                              </option>
+                            ))}
+                          </select>
+                        </td>
                         <td>
                           {u.ativo ? (
                             <span className="badge badge-success">ativo</span>

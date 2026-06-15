@@ -82,6 +82,12 @@ export default function OnboardingPage() {
     if (passo === "fazenda") {
       setSalvando(true);
       const sb = getSupabase();
+      // Pega usuarios.id pra criado_por
+      let criadoPor: string | null = null;
+      if (user) {
+        const rU = await sb.from("usuarios").select("id").eq("auth_id", user.id).maybeSingle();
+        criadoPor = rU.data?.id || null;
+      }
       const r = await sb
         .from("fazendas")
         .insert({
@@ -90,6 +96,7 @@ export default function OnboardingPage() {
           estado: fazEstado || null,
           area_total_ha: fazArea ? Number(fazArea) : null,
           ativo: true,
+          criado_por: criadoPor,
         })
         .select("id")
         .single();

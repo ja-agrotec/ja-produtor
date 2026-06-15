@@ -38,7 +38,7 @@ const FORM_VAZIO: Form = {
 };
 
 const ROLES: { value: Role; label: string; hint: string }[] = [
-  { value: "admin", label: "Admin", hint: "Acesso total" },
+  { value: "admin", label: "Admin da fazenda", hint: "Acesso total dentro da fazenda" },
   { value: "gerente", label: "Gerente", hint: "Dashboard (leitura)" },
   { value: "operador", label: "Operador", hint: "Só app de campo" },
   { value: "visualizador", label: "Visualizador", hint: "Somente leitura" },
@@ -46,6 +46,8 @@ const ROLES: { value: Role; label: string; hint: string }[] = [
 
 function roleBadge(r: Role) {
   switch (r) {
+    case "superadmin":
+      return <span className="badge badge-success">Superadmin</span>;
     case "admin":
       return <span className="badge badge-success">Admin</span>;
     case "gerente":

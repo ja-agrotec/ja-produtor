@@ -7,17 +7,16 @@ import { getSupabase } from "@/lib/supabase";
 import { useAuth } from "@/lib/auth-context";
 
 type NavItem = { href: string; label: string; icon: string };
-type NavGroup = { id: string; label: string; icon: string; items: NavItem[]; adminOnly?: boolean };
+type NavGroup = { id: string; label: string; icon: string; items: NavItem[]; superadminOnly?: boolean };
 
 const GROUPS: NavGroup[] = [
   {
-    id: "admin",
-    label: "Administracao",
+    id: "superadmin",
+    label: "Sistema (Superadmin)",
     icon: "🛡️",
-    adminOnly: true,
+    superadminOnly: true,
     items: [
       { href: "/admin",     label: "Painel Admin",  icon: "🛡️" },
-      { href: "/usuarios",  label: "Usuarios",      icon: "👤" },
     ],
   },
   {
@@ -207,7 +206,7 @@ export default function AppSidebar({ mobileOpen = false, onClose }: Props) {
 
       {/* Nav */}
       <nav className="flex-1 overflow-y-auto px-2 pb-2">
-        {GROUPS.filter((g) => !g.adminOnly || role === "admin").map((g) => {
+        {GROUPS.filter((g) => !g.superadminOnly || role === "superadmin").map((g) => {
           const hasActive = g.items.some((it) => pathname === it.href || pathname?.startsWith(it.href + "/"));
           const aberto = !!expandidos[g.id];
           return (

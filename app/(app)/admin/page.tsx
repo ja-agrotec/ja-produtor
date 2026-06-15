@@ -80,7 +80,7 @@ export default function AdminPage() {
         .select("role")
         .eq("auth_id", user.id)
         .maybeSingle();
-      setAutorizado(r.data?.role === "admin");
+      setAutorizado(r.data?.role === "superadmin");
     })();
   }, [user]);
 

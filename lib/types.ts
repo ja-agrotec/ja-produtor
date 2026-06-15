@@ -3,7 +3,7 @@
 // Atencao: mistura snake_case PT (criado_em/atualizado_em) e EN (created_at/updated_at)
 // porque a base foi criada em fases. Mantenha o nome real da coluna em cada tabela.
 
-export type Role = "admin" | "gerente" | "operador" | "visualizador";
+export type Role = "superadmin" | "admin" | "gerente" | "operador" | "visualizador";
 export type StatusSafra = "planejamento" | "aberta" | "encerrada" | "cancelada";
 export type TipoLancamento = "despesa" | "receita";
 export type StatusLancamento = "rascunho" | "confirmado" | "cancelado";

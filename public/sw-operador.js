@@ -11,11 +11,13 @@
 //       /api/*, supabase.co -> sem intervencao (network passa direto;
 //                              app trata erros via fila offline ja existente)
 
-const CACHE = "ja-operador-v3";
+const CACHE = "ja-operador-v4";
 const SHELL = [
   "/operador",
   "/operador/manifest.json",
   "/logo-ja-agrotec.png",
+  "/icon-192.png",
+  "/icon-512.png",
   "/manifest.webmanifest",
 ];
 

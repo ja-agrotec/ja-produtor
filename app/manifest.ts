@@ -13,19 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: "#7CB342",
     lang: "pt-BR",
     categories: ["business", "productivity", "agriculture"],
+    // Chrome Android exige sizes explicitos (192x192 e 512x512) pra
+    // disparar beforeinstallprompt. "any" sozinho falha o criterio.
     icons: [
-      {
-        src: "/logo-ja-agrotec.png",
-        sizes: "any",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/logo-ja-agrotec.png",
-        sizes: "any",
-        type: "image/png",
-        purpose: "maskable",
-      },
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
     shortcuts: [
       { name: "Home", short_name: "Home", url: "/home" },

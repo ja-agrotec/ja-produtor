@@ -1,6 +1,10 @@
 // Manifest da PWA Operador. Servido em /operador/manifest.json.
 // Diferente do manifest raiz (/manifest.webmanifest) pra que instalar
 // o atalho do Operador no celular crie um app distinto do Produtor.
+//
+// IMPORTANTE: Chrome Android exige icons com sizes EXPLICITOS
+// (192x192 e 512x512) pra disparar beforeinstallprompt. "any" sozinho
+// falha o criterio "installable" e o banner nao aparece.
 import { NextResponse } from "next/server";
 
 export function GET() {
@@ -17,18 +21,10 @@ export function GET() {
     lang: "pt-BR",
     categories: ["business", "productivity", "agriculture"],
     icons: [
-      {
-        src: "/logo-ja-agrotec.png",
-        sizes: "any",
-        type: "image/png",
-        purpose: "any",
-      },
-      {
-        src: "/logo-ja-agrotec.png",
-        sizes: "any",
-        type: "image/png",
-        purpose: "maskable",
-      },
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "maskable" },
+      { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
   });
 }

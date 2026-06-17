@@ -100,8 +100,7 @@ export async function POST(req: NextRequest) {
   }
   const authUserId = rUser.data.user.id;
 
-  // 2) Rate limit por user_id (mais eficaz que IP - mesmo que falhe em
-  //    serverless cold start, freia abuso dentro da mesma instancia).
+  // 2) Rate limit in-memory por minuto (best-effort, freia bursts).
   const limite = checarLimite(`ia:user:${authUserId}`, MAX_REQS, JANELA_SEGS);
   if (!limite.ok) {
     logWarn("ia_rate_limit", { ip, authUserId, resetIn: limite.resetIn });
@@ -115,6 +114,27 @@ export async function POST(req: NextRequest) {
         },
       },
     );
+  }
+
+  // 3) Quota DIARIA persistente em Postgres (sobrevive cold start).
+  //    Default 100/dia/user. Superadmin retorna ok=true limite=-1 (sem cap).
+  const rQ = await sb.rpc("consumir_quota_ia", { p_limite_diario: 100 });
+  if (rQ.error) {
+    logErro("ia_quota_erro", rQ.error, { ip, authUserId });
+    // Falha "soft": loga mas deixa passar (nao quero quebrar UX se DB
+    // estiver com problema temporario). Auth + rate limit in-memory
+    // ainda barram abuso massivo.
+  } else {
+    const q = (rQ.data || [])[0];
+    if (q && q.ok === false) {
+      logWarn("ia_quota_excedida", { authUserId, usado: q.usado, limite: q.limite });
+      return NextResponse.json(
+        {
+          erro: `Limite diario de ${q.limite} analises ja foi atingido. Tente amanha ou solicite upgrade.`,
+        },
+        { status: 429 },
+      );
+    }
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -132,7 +152,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: "Body invalido" }, { status: 400 });
   }
 
-  const prompt = `Voce e um agronomo consultor analisando dados de uma fazenda brasileira. Devolva diagnostico estruturado em JSON com 3 listas: oportunidades, riscos, acoes prioritarias. Cada item deve ter titulo curto (max 80 chars), descricao acionavel (max 300 chars) e prioridade (alta/media/baixa). Quando relevante, sugira navegacao com acao.href usando UMA destas rotas: ${Array.from(ROTAS_VALIDAS).join(", ")}.
+  // System fixo (regras + formato + rotas) — marcado pra cache_control.
+  // Em pratica: Haiku 4.5 min cacheable = 4096 tokens, esse system fica
+  // abaixo, entao normalmente nao cacheia. Marcado por consistencia e
+  // pra ja estar pronto se as regras crescerem.
+  const system = `Voce e um agronomo consultor analisando dados de uma fazenda brasileira. Devolva diagnostico estruturado em JSON com 3 listas: oportunidades, riscos, acoes prioritarias. Cada item deve ter titulo curto (max 80 chars), descricao acionavel (max 300 chars) e prioridade (alta/media/baixa). Quando relevante, sugira navegacao com acao.href usando UMA destas rotas: ${Array.from(ROTAS_VALIDAS).join(", ")}.
 
 REGRAS:
 - Use APENAS dados do snapshot, nao invente numeros.
@@ -147,9 +171,9 @@ Formato:
   "oportunidades": [{ "icone": "💡", "titulo": "...", "descricao": "...", "prioridade": "alta|media|baixa", "acao": { "label": "...", "href": "/rota" } }],
   "riscos": [...],
   "acoes": [...]
-}
+}`;
 
-SNAPSHOT DA FAZENDA:
+  const userPrompt = `SNAPSHOT DA FAZENDA:
 ${JSON.stringify(snapshot, null, 2)}`;
 
   try {
@@ -163,7 +187,10 @@ ${JSON.stringify(snapshot, null, 2)}`;
       body: JSON.stringify({
         model: MODELO,
         max_tokens: 2048,
-        messages: [{ role: "user", content: prompt }],
+        system: [
+          { type: "text", text: system, cache_control: { type: "ephemeral" } },
+        ],
+        messages: [{ role: "user", content: userPrompt }],
       }),
     });
 

@@ -247,21 +247,20 @@ export default function UsuariosPage() {
       return;
     }
 
-    // Criar novo: chama Edge Function
+    // Criar novo: chama API Next (substitui Edge Function antiga que so
+    // aceitava role=admin do caller - agora aceita superadmin tambem).
     try {
-      const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-      // tenta usar a sessão do usuário logado (mais seguro), cai pra anon key
-      const {
-        data: { session },
-      } = await sb.auth.getSession();
-      const token = session?.access_token || anonKey;
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        throw new Error("Sessao expirada. Faca login novamente.");
+      }
 
-      const res = await fetch(EDGE_CRIAR_USUARIO, {
+      const res = await fetch("/api/criar-membro", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
-          apikey: anonKey,
         },
         body: JSON.stringify({
           email: form.email.trim(),
@@ -269,12 +268,14 @@ export default function UsuariosPage() {
           role: form.role,
           fazenda_id: form.fazenda_id,
           senha_inicial: form.senha_inicial,
+          telefone: form.telefone.trim() || null,
+          cargo: form.cargo.trim() || null,
         }),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok || json.ok === false) {
-        const msg = json.error || json.message || `HTTP ${res.status}`;
+        const msg = json.erro || json.error || `HTTP ${res.status}`;
         throw new Error(msg);
       }
 

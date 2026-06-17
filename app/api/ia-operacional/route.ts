@@ -10,6 +10,7 @@
 // falhe, retorna 503 e o client cai pro modo heuristico.
 // ============================================================
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import { checarLimite, getIp } from "@/lib/rate-limit";
 import { logErro, logInfo, logWarn } from "@/lib/log";
 
@@ -18,9 +19,10 @@ export const dynamic = "force-dynamic";
 
 const MODELO = "claude-haiku-4-5-20251001";
 
-// Rate limit: 10 reqs por IP em 60s. Claude Haiku custa ~$0.001-0.01
-// por analise; com 10/min por IP, atacante consegue gastar no maximo
-// ~R$5/hora antes do limite frear.
+// Rate limit in-memory: 10 reqs/min por IP. ATENCAO: Vercel serverless
+// nao garante persistencia entre invocacoes (Map zera entre cold
+// starts), entao isso e BEST-EFFORT, nao seguro contra abuso real.
+// A protecao seria contra abuso e Bearer token obrigatorio.
 const MAX_REQS = 10;
 const JANELA_SEGS = 60;
 
@@ -70,9 +72,39 @@ function sanitizarItem(it: any): ItemIA | null {
 
 export async function POST(req: NextRequest) {
   const ip = getIp(req);
-  const limite = checarLimite(`ia:${ip}`, MAX_REQS, JANELA_SEGS);
+
+  // 1) Autenticacao obrigatoria - so user logado consome a IA.
+  //    Sem Bearer token valido, retorna 401 imediato sem chamar Claude.
+  //    Essa e a primeira camada de protecao contra DoS financeiro.
+  const auth = req.headers.get("authorization") || "";
+  const token = auth.replace(/^Bearer\s+/i, "");
+  if (!token) {
+    logWarn("ia_sem_token", { ip });
+    return NextResponse.json({ erro: "autenticacao obrigatoria" }, { status: 401 });
+  }
+
+  // Valida o token via Supabase
+  const sbUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!sbUrl || !anonKey) {
+    return NextResponse.json({ erro: "env vars ausentes" }, { status: 503 });
+  }
+  const sb = createClient(sbUrl, anonKey, {
+    auth: { persistSession: false },
+    global: { headers: { Authorization: `Bearer ${token}` } },
+  });
+  const rUser = await sb.auth.getUser(token);
+  if (rUser.error || !rUser.data.user) {
+    logWarn("ia_token_invalido", { ip });
+    return NextResponse.json({ erro: "token invalido" }, { status: 401 });
+  }
+  const authUserId = rUser.data.user.id;
+
+  // 2) Rate limit por user_id (mais eficaz que IP - mesmo que falhe em
+  //    serverless cold start, freia abuso dentro da mesma instancia).
+  const limite = checarLimite(`ia:user:${authUserId}`, MAX_REQS, JANELA_SEGS);
   if (!limite.ok) {
-    logWarn("ia_rate_limit", { ip, resetIn: limite.resetIn });
+    logWarn("ia_rate_limit", { ip, authUserId, resetIn: limite.resetIn });
     return NextResponse.json(
       { erro: "Muitas requisicoes. Tente novamente em alguns segundos." },
       {

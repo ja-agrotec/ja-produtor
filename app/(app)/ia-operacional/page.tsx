@@ -109,9 +109,16 @@ async function tentarIA(snapshot: ReturnType<typeof montarSnapshot>): Promise<{
   resumo?: string;
 } | null> {
   try {
+    const sb = getSupabase();
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) return null; // sem sessao, cai pro fallback heuristico
     const r = await fetch("/api/ia-operacional", {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
       body: JSON.stringify(snapshot),
     });
     if (!r.ok) return null;

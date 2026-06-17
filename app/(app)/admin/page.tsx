@@ -159,14 +159,26 @@ export default function AdminPage() {
       .then((d) => setSaude(d))
       .catch(() => setSaude({ ok: false, total_ms: 0, supabase: { ok: false, ms: 0 } }));
 
-    // Probe rapido na IA
-    fetch("/api/ia-operacional", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ filtros: {}, totais: {}, safras: [], vendas_recentes: [], insumos_em_alerta: [] }),
-    })
-      .then((r) => setIaOk(r.ok))
-      .catch(() => setIaOk(false));
+    // Probe rapido na IA - precisa de Bearer token (route exige auth)
+    (async () => {
+      const sb = getSupabase();
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { setIaOk(false); return; }
+      try {
+        const r = await fetch("/api/ia-operacional", {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ filtros: {}, totais: {}, safras: [], vendas_recentes: [], insumos_em_alerta: [] }),
+        });
+        setIaOk(r.ok);
+      } catch {
+        setIaOk(false);
+      }
+    })();
   }, [autorizado]);
 
   if (loading || autorizado === null) {

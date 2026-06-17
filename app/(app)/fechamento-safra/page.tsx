@@ -149,7 +149,10 @@ function FechamentoSafraContent() {
           .select("*, fazendas(nome)")
           .neq("status", "cancelada")
           .order("data_plantio", { ascending: false, nullsFirst: false }),
-        sb.from("lancamentos").select("*").limit(5000),
+        // So precisamos de lancamentos com safra_id - reduz drasticamente
+        // o payload em fazendas com muito lancamento avulso (sem safra).
+        // Index idx_lancamentos_safra (migration 0019) acelera o filtro.
+        sb.from("lancamentos").select("*").not("safra_id", "is", null).limit(5000),
         sb.from("categorias_lancamento").select("*"),
         sb.from("maquinas").select("*").eq("ativo", true),
         sb.from("despesas_fixas").select("*").eq("ativo", true),

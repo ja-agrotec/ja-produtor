@@ -12,6 +12,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { logErro } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,6 +45,7 @@ export async function GET() {
     }
   } catch (e: any) {
     supabaseErro = String(e?.message || e).slice(0, 200);
+    logErro("health_supabase_excecao", e);
   }
 
   const totalMs = Date.now() - inicio;

@@ -10,11 +10,19 @@
 // falhe, retorna 503 e o client cai pro modo heuristico.
 // ============================================================
 import { NextRequest, NextResponse } from "next/server";
+import { checarLimite, getIp } from "@/lib/rate-limit";
+import { logErro, logInfo, logWarn } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const MODELO = "claude-haiku-4-5-20251001";
+
+// Rate limit: 10 reqs por IP em 60s. Claude Haiku custa ~$0.001-0.01
+// por analise; com 10/min por IP, atacante consegue gastar no maximo
+// ~R$5/hora antes do limite frear.
+const MAX_REQS = 10;
+const JANELA_SEGS = 60;
 
 type ItemIA = {
   id?: string;
@@ -61,6 +69,22 @@ function sanitizarItem(it: any): ItemIA | null {
 }
 
 export async function POST(req: NextRequest) {
+  const ip = getIp(req);
+  const limite = checarLimite(`ia:${ip}`, MAX_REQS, JANELA_SEGS);
+  if (!limite.ok) {
+    logWarn("ia_rate_limit", { ip, resetIn: limite.resetIn });
+    return NextResponse.json(
+      { erro: "Muitas requisicoes. Tente novamente em alguns segundos." },
+      {
+        status: 429,
+        headers: {
+          "Retry-After": String(limite.resetIn),
+          "X-RateLimit-Remaining": "0",
+        },
+      },
+    );
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -113,8 +137,9 @@ ${JSON.stringify(snapshot, null, 2)}`;
 
     if (!r.ok) {
       const erroTxt = await r.text();
+      logErro("ia_claude_nao_ok", new Error(erroTxt.slice(0, 200)), { status: r.status, ip });
       return NextResponse.json(
-        { erro: `Claude API retornou ${r.status}`, detalhe: erroTxt.slice(0, 200) },
+        { erro: `Claude API retornou ${r.status}` },
         { status: 502 },
       );
     }
@@ -125,9 +150,10 @@ ${JSON.stringify(snapshot, null, 2)}`;
     let parsed: any;
     try {
       parsed = JSON.parse(limpo);
-    } catch {
+    } catch (e) {
+      logErro("ia_resposta_invalida", e, { ip, sample: texto.slice(0, 100) });
       return NextResponse.json(
-        { erro: "Resposta da IA nao e JSON valido", raw: texto.slice(0, 200) },
+        { erro: "Resposta da IA nao e JSON valido" },
         { status: 502 },
       );
     }
@@ -139,10 +165,17 @@ ${JSON.stringify(snapshot, null, 2)}`;
       acoes: (parsed.acoes || []).map(sanitizarItem).filter(Boolean).slice(0, 4),
     };
 
+    logInfo("ia_resposta_ok", {
+      ip,
+      ops: resposta.oportunidades.length,
+      risc: resposta.riscos.length,
+      acoes: resposta.acoes.length,
+    });
     return NextResponse.json(resposta);
   } catch (e: any) {
+    logErro("ia_excecao", e, { ip });
     return NextResponse.json(
-      { erro: "Falha ao chamar Claude", detalhe: String(e?.message || e).slice(0, 200) },
+      { erro: "Falha ao chamar Claude" },
       { status: 502 },
     );
   }

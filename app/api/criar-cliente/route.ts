@@ -13,11 +13,25 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { checarLimite, getIp } from "@/lib/rate-limit";
+import { logErro, logInfo, logWarn } from "@/lib/log";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
+  const ip = getIp(req);
+  // Limite duro: 5 criacoes por minuto por IP. So superadmin chama,
+  // mas se o token vazar, freia o estrago.
+  const lim = checarLimite(`criar-cliente:${ip}`, 5, 60);
+  if (!lim.ok) {
+    logWarn("criar_cliente_rate_limit", { ip, resetIn: lim.resetIn });
+    return NextResponse.json(
+      { erro: "Muitas tentativas. Tente novamente em alguns segundos." },
+      { status: 429, headers: { "Retry-After": String(lim.resetIn) } },
+    );
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !serviceKey) {
@@ -53,6 +67,7 @@ export async function POST(req: NextRequest) {
     .eq("auth_id", authUserId)
     .maybeSingle();
   if (rRole.error || rRole.data?.role !== "superadmin") {
+    logWarn("criar_cliente_acesso_negado", { ip, authUserId, role: rRole.data?.role });
     return NextResponse.json({ erro: "acesso negado (requer superadmin)" }, { status: 403 });
   }
 
@@ -86,6 +101,7 @@ export async function POST(req: NextRequest) {
     user_metadata: { nome },
   });
   if (rAuth.error || !rAuth.data.user) {
+    logErro("criar_cliente_auth_falhou", rAuth.error || new Error("user vazio"), { ip, email });
     return NextResponse.json(
       { erro: "falha ao criar auth: " + (rAuth.error?.message || "?") },
       { status: 500 },
@@ -110,6 +126,7 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (rIns.error || !rIns.data) {
+    logErro("criar_cliente_insert_falhou", rIns.error || new Error("data vazio"), { ip, email, novoAuthId });
     // Rollback: deleta auth user pra nao deixar orfao
     await sbAdmin.auth.admin.deleteUser(novoAuthId).catch(() => {});
     return NextResponse.json(
@@ -117,6 +134,14 @@ export async function POST(req: NextRequest) {
       { status: 500 },
     );
   }
+
+  logInfo("criar_cliente_ok", {
+    ip,
+    autor_auth_id: authUserId,
+    novo_usuario_id: rIns.data.id,
+    novo_email: email,
+    plano_id: planoId,
+  });
 
   return NextResponse.json({
     ok: true,

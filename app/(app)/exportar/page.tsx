@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import * as XLSX from "xlsx";
 import { getSupabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import type { Fazenda } from "@/lib/types";
@@ -80,6 +79,8 @@ export default function ExportarPage() {
     }
 
     setGerando(true);
+    // Dynamic import: XLSX (~96kB) so carrega quando o user clica em Exportar
+    const XLSX = await import("xlsx");
     const sb = getSupabase();
     const wb = XLSX.utils.book_new();
 

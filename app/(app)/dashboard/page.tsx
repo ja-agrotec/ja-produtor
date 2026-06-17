@@ -4,6 +4,7 @@
 // Portado de modules/admin-dashboard.js — Chart.js trocado por recharts.
 
 import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { getSupabase } from "@/lib/supabase";
 import type { Categoria, Fazenda, Insumo, Lancamento } from "@/lib/types";
 import { fmtBRL, fmtBRLShort } from "@/lib/format";
@@ -73,12 +74,17 @@ export default function DashboardPage() {
     setCarregando(true);
     const sb = getSupabase();
 
+    // Limit defensivo: pegamos os 5000 mais recentes dentro do filtro
+    // pra evitar timeout em fazendas com muito historico. Caso o user
+    // queira mais, filtra periodo mais curto. Idx idx_lancamentos_data
+    // (0019) acelera a ordenacao.
+    const LIMITE_LANC = 5000;
     let qLanc = sb
       .from("lancamentos")
       .select("*")
       .eq("status", "confirmado")
-      .order("data_lancamento", { ascending: true })
-      .limit(1000);
+      .order("data_lancamento", { ascending: false })
+      .limit(LIMITE_LANC);
 
     if (fazendaSel) qLanc = qLanc.eq("fazenda_id", fazendaSel);
     if (dataDe) qLanc = qLanc.gte("data_lancamento", dataDe);
@@ -91,9 +97,15 @@ export default function DashboardPage() {
       sb.from("insumos").select("id,nome,categoria,estoque_atual,preco_unitario,unidade,ativo,estoque_minimo,criado_em,atualizado_em").eq("ativo", true),
     ]);
 
-    setLancamentos((rLanc.data || []) as Lancamento[]);
+    const lancsCarregados = (rLanc.data || []) as Lancamento[];
+    setLancamentos(lancsCarregados);
     setCategorias((rCat.data || []) as Categoria[]);
     setInsumos((rIns.data || []) as Insumo[]);
+    if (lancsCarregados.length >= LIMITE_LANC) {
+      toast.warning(
+        `Mostrando os ${LIMITE_LANC} lancamentos mais recentes do filtro. Restrinja o periodo pra ver tudo.`,
+      );
+    }
     setCarregando(false);
   }
 

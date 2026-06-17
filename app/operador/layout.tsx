@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { getSupabase } from "@/lib/supabase";
 import { bootstrap, lerCache, sincronizarReferencias } from "@/lib/operador-cache";
 import OfflineBanner from "@/components/OfflineBanner";
+import InstalarPwaBanner from "@/components/InstalarPwaBanner";
 import { emConexaoReal } from "@/lib/offline";
 import { toast } from "sonner";
 
@@ -97,6 +98,7 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
       </head>
       <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
         <OfflineBanner />
+        <InstalarPwaBanner />
 
         {/* Header mobile-first */}
         <header

@@ -29,6 +29,7 @@ const SECOES: Secao[] = [
   { id: "ia", titulo: "IA Operacional", icone: "🤖" },
   { id: "cotacoes", titulo: "Cotacoes em tempo real", icone: "💹" },
   { id: "offline", titulo: "App de campo offline", icone: "📱" },
+  { id: "instalar-pwa", titulo: "Como instalar no celular", icone: "⬇️" },
   { id: "faq", titulo: "Perguntas frequentes", icone: "❓" },
   { id: "troubleshooting", titulo: "Resolvendo problemas", icone: "🛠️" },
 ];
@@ -215,16 +216,93 @@ export default function GuiaPage() {
       <Modulo
         id="offline"
         icone="📱"
-        titulo="App de campo offline"
-        descricao="Operadores cadastrados como role='operador' acessam /operador - PWA offline-first pra registrar lancamentos no campo sem internet."
+        titulo="App de campo offline (PWA do Operador)"
+        descricao="Operadores cadastrados como role='operador' acessam /operador - PWA offline-first pra registrar lancamentos no campo sem internet. Pode ser instalada na tela inicial do celular como app nativo."
         comoUsar={[
-          "Usuarios > + Novo Membro > role 'Operador' - ele recebe email + senha inicial.",
-          "Operador instala a PWA no celular ao abrir /operador no navegador.",
-          "Sem internet: ele cria lancamentos normalmente, sao salvos em fila local.",
-          "Ao voltar online: a fila sincroniza automaticamente. Banner verde confirma 'Sincronizado'.",
+          "Voce (admin) cadastra o operador em Membros da Fazenda > + Novo Membro > role 'Operador'.",
+          "Repassa pro operador: email + senha + link da plataforma.",
+          "Operador entra em produtor.ja-agrotec.com.br pelo navegador do celular.",
+          "Apos login, ele e levado direto pro /operador (sem onboarding).",
+          "Aparece banner amarelo no topo: 'Instale o app no celular' com botao Instalar.",
+          "No Android: 1 toque no botao Instalar instala a PWA.",
+          "No iPhone (Safari): banner mostra instrucoes - tocar em Compartilhar > Adicionar a Tela de Inicio.",
+          "Depois de instalado, abre direto pelo icone da tela inicial.",
         ]}
         atalho={null}
       />
+
+      <section id="instalar-pwa" className="card">
+        <h2 className="flex items-center gap-2" style={{ marginBottom: 6 }}>
+          <span>⬇️</span> Como instalar o app do Operador no celular
+        </h2>
+        <p className="text-sm mb-3" style={{ color: "var(--muted)" }}>
+          Apos o primeiro login do operador, o sistema oferece automaticamente
+          a instalacao. Mas se o banner foi dispensado ou nao aparece, abaixo
+          o passo-a-passo manual.
+        </p>
+
+        <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}>
+          {/* Android */}
+          <div className="rounded-ja p-3" style={{ background: "var(--green-bg)" }}>
+            <div className="font-semibold text-sm mb-2" style={{ color: "var(--text)" }}>
+              🤖 Android (Chrome, Edge, Samsung Internet)
+            </div>
+            <ol className="text-sm space-y-1" style={{ marginLeft: 18, listStyleType: "decimal", color: "var(--muted)" }}>
+              <li>Abra produtor.ja-agrotec.com.br no Chrome do celular.</li>
+              <li>Faca login com email e senha do operador.</li>
+              <li>No banner amarelo do topo, toque em <b>Instalar</b>.</li>
+              <li>Confirme no popup do navegador.</li>
+              <li>Aparece o icone na tela inicial.</li>
+            </ol>
+            <div className="text-xs mt-2" style={{ color: "var(--dim)" }}>
+              Sem banner? Menu do navegador (...) &gt; <b>Instalar aplicativo</b> ou <b>Adicionar a tela inicial</b>.
+            </div>
+          </div>
+
+          {/* iPhone */}
+          <div className="rounded-ja p-3" style={{ background: "var(--green-bg)" }}>
+            <div className="font-semibold text-sm mb-2" style={{ color: "var(--text)" }}>
+              🍎 iPhone / iPad (Safari)
+            </div>
+            <ol className="text-sm space-y-1" style={{ marginLeft: 18, listStyleType: "decimal", color: "var(--muted)" }}>
+              <li>Abra produtor.ja-agrotec.com.br no <b>Safari</b> (nao Chrome).</li>
+              <li>Faca login com email e senha do operador.</li>
+              <li>Toque no icone <b>Compartilhar</b> ⬆️ na barra inferior.</li>
+              <li>Role e toque em <b>Adicionar a Tela de Inicio</b>.</li>
+              <li>Toque em <b>Adicionar</b> no canto superior direito.</li>
+            </ol>
+            <div className="text-xs mt-2" style={{ color: "var(--dim)" }}>
+              No iPhone, PWA so funciona pelo Safari (limitacao da Apple).
+            </div>
+          </div>
+
+          {/* Desktop */}
+          <div className="rounded-ja p-3" style={{ background: "var(--green-bg)" }}>
+            <div className="font-semibold text-sm mb-2" style={{ color: "var(--text)" }}>
+              💻 Computador (Chrome, Edge)
+            </div>
+            <ol className="text-sm space-y-1" style={{ marginLeft: 18, listStyleType: "decimal", color: "var(--muted)" }}>
+              <li>Abra produtor.ja-agrotec.com.br.</li>
+              <li>Faca login.</li>
+              <li>Icone de instalacao aparece na barra de endereco (direita).</li>
+              <li>Clique no icone e em <b>Instalar</b>.</li>
+            </ol>
+            <div className="text-xs mt-2" style={{ color: "var(--dim)" }}>
+              Mesmo no desktop, o PWA salva lancamentos offline em caso de queda de internet.
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="mt-4 p-3 rounded text-xs"
+          style={{ background: "#fff8e1", border: "1px solid #ffe082", color: "#5d4037" }}
+        >
+          <b>Importante</b>: o primeiro acesso precisa de internet pra baixar
+          o cache de referencias (fazenda, talhoes, categorias, insumos).
+          Depois disso, o operador pode lancar despesas mesmo sem sinal -
+          a fila local sincroniza automaticamente quando voltar online.
+        </div>
+      </section>
 
       <FAQ />
       <Troubleshooting />

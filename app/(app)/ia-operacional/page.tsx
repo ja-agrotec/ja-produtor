@@ -110,9 +110,16 @@ async function tentarIA(snapshot: ReturnType<typeof montarSnapshot>): Promise<{
 } | null> {
   try {
     const sb = getSupabase();
-    const { data: { session } } = await sb.auth.getSession();
-    const token = session?.access_token;
-    if (!token) return null; // sem sessao, cai pro fallback heuristico
+    // Retry: AuthProvider pode estar carregando session quando essa
+    // funcao roda. Tenta ate 3x com 600ms de espera.
+    let token: string | undefined;
+    for (let i = 0; i < 3; i++) {
+      const { data: { session } } = await sb.auth.getSession();
+      token = session?.access_token;
+      if (token) break;
+      await new Promise((r) => setTimeout(r, 600));
+    }
+    if (!token) return null; // sem sessao apos retry - cai pro heuristico
     const r = await fetch("/api/ia-operacional", {
       method: "POST",
       headers: {

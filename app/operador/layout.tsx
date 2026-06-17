@@ -7,6 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 import { bootstrap, lerCache, sincronizarReferencias } from "@/lib/operador-cache";
 import OfflineBanner from "@/components/OfflineBanner";
 import InstalarPwaBanner from "@/components/InstalarPwaBanner";
+import RegisterSwOperador from "@/components/RegisterSwOperador";
 import { emConexaoReal } from "@/lib/offline";
 import { toast } from "sonner";
 
@@ -97,6 +98,7 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
         <meta name="theme-color" content="#1A2E1A" />
       </head>
       <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
+        <RegisterSwOperador />
         <OfflineBanner />
         <InstalarPwaBanner />
 

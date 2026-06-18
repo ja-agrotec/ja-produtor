@@ -61,6 +61,9 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  verification: {
+    google: "hF3g2pM34A39210y-RyzUuilSjGbxMVl7QV6fiEZ4p8",
+  },
   openGraph: {
     title: "JA-Produtor · O único agro 100% offline do mercado",
     description:

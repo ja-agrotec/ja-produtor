@@ -32,10 +32,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         router.push("/login?inativo=1");
         return;
       }
+      const role = r.data?.role;
+
+      // Operador nunca deveria ver as rotas do Produtor (/home, /dashboard,
+      // etc). Redireciona pra /operador imediatamente. Pode acontecer quando
+      // o operador instala a PWA do Produtor por engano (start_url=/home)
+      // e entra direto na rota errada.
+      if (
+        role === "operador" &&
+        pathname !== "/operador" &&
+        !pathname.startsWith("/operador/")
+      ) {
+        router.push("/operador");
+        return;
+      }
+
       // Onboarding: se admin/gerente nao tem fazenda cadastrada e nao
       // esta na propria tela de onboarding, redireciona pra wizard.
-      // Operador nao recebe onboarding (acessa /operador, ja tem fazenda).
-      const role = r.data?.role;
       if (
         pathname !== "/onboarding" &&
         pathname !== "/operador" &&

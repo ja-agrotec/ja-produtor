@@ -13,12 +13,19 @@ import RegisterSwOperador from "@/components/RegisterSwOperador";
 import { emConexaoReal } from "@/lib/offline";
 import { toast } from "sonner";
 
+function ehStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  if ((window.navigator as any).standalone === true) return true;
+  return window.matchMedia("(display-mode: standalone)").matches;
+}
+
 export default function OperadorLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [pronto, setPronto] = useState(false);
   const [perfilNome, setPerfilNome] = useState<string>("");
   const [fazendaNome, setFazendaNome] = useState<string>("");
+  const [contaErrada, setContaErrada] = useState<{ email: string; standalone: boolean } | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -55,9 +62,17 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
       try {
         const c = await bootstrap(getSupabase(), user.id);
         if (!c || !c.perfil) {
-          // Usuario logado mas sem perfil de operador (ex: admin) -
-          // NAO derruba sessao. Redireciona pro Produtor com aviso.
-          toast.info("Esta área é exclusiva pra usuários com role=operador. Voltando pro Produtor.");
+          // Usuario logado mas nao e operador (admin/superadmin/etc).
+          // Se estamos em PWA standalone (apk Operador instalado),
+          // NAO redireciona pra /home porque isso sai do escopo da PWA
+          // e mostra menu Produtor confuso. Mostra tela explicativa
+          // pedindo pra trocar de conta.
+          if (ehStandalone()) {
+            setContaErrada({ email: user.email || "?", standalone: true });
+            return;
+          }
+          // Navegador normal: redireciona pro Produtor
+          toast.info("Esta area e exclusiva pra usuarios com role=operador. Voltando pro Produtor.");
           router.push("/home");
           return;
         }
@@ -65,9 +80,12 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
         setFazendaNome(c.fazenda?.nome || "");
         setPronto(true);
       } catch (e: any) {
-        // Bootstrap pode lancar "Operador sem fazenda atribuida"
         const msg = String(e?.message || "Erro ao carregar perfil");
         if (msg.includes("fazenda atribuida")) {
+          if (ehStandalone()) {
+            setContaErrada({ email: user.email || "?", standalone: true });
+            return;
+          }
           toast.error(msg);
           router.push("/home");
           return;
@@ -77,18 +95,48 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
     })();
   }, [user, loading, router]);
 
-  if (loading) {
-    return <div className="flex items-center justify-center h-screen" style={{ color: "var(--muted)" }}>Carregando...</div>;
-  }
-  if (!user) return null;
-  if (!pronto) {
-    return <div className="flex items-center justify-center h-screen" style={{ color: "var(--muted)" }}>Preparando seu app...</div>;
-  }
-
   async function sair() {
     const sb = getSupabase();
     await sb.auth.signOut();
     router.push("/login");
+  }
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-screen" style={{ color: "var(--muted)" }}>Carregando...</div>;
+  }
+  if (!user) return null;
+
+  // PWA standalone com conta errada (nao-operador): mostra tela
+  // explicativa em vez de redirecionar pra /home (que sairia do scope
+  // da PWA e mostraria menu Produtor confusoo)
+  if (contaErrada) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center p-6"
+        style={{ background: "linear-gradient(135deg,#1A2E1A 0%,#2d4a2d 100%)" }}
+      >
+        <div className="card w-full max-w-md text-center">
+          <div style={{ fontSize: 56 }}>👤</div>
+          <h1 className="font-display text-xl mt-3 mb-2" style={{ color: "var(--dark)" }}>
+            Conta sem perfil de operador
+          </h1>
+          <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+            Voce esta logado como <b>{contaErrada.email}</b>.
+            Este app e exclusivo pra usuarios com papel <b>operador</b>.
+          </p>
+          <p className="text-sm mb-4" style={{ color: "var(--muted)" }}>
+            Sai e logue com uma conta de operador pra usar o app de campo.
+          </p>
+          <button onClick={sair} className="btn-primary w-full justify-center">
+            Sair e trocar de conta
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!pronto) {
+    return <div className="flex items-center justify-center h-screen" style={{ color: "var(--muted)" }}>Preparando seu app...</div>;
   }
 
   return (

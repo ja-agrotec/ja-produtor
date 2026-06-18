@@ -6,6 +6,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { getSupabase } from "@/lib/supabase";
+import AvisoLancamentosOperador from "@/components/AvisoLancamentosOperador";
 import { useAuth } from "@/lib/auth-context";
 import type { Fazenda, Insumo, Safra, Lancamento, VendaGraos } from "@/lib/types";
 import { fmtBRL, fmtBRLShort, fmtData, fmtInt, hoje } from "@/lib/format";
@@ -402,6 +403,9 @@ export default function HomePage() {
           )}
         </div>
       </div>
+
+      {/* Aviso de lancamentos recentes de operadores (admin/superadmin) */}
+      <AvisoLancamentosOperador />
 
       {/* Checklist de inicio - so aparece depois que terminou de carregar
           (evita race de mostrar "Cadastrar fazenda" enquanto rFaz ainda nao

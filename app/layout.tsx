@@ -19,15 +19,98 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "JA Agrotec · Módulo Produtor",
-  description: "Gestão completa da propriedade rural — parte do ecossistema JA Agrotec.",
-  applicationName: "JA Agrotec Produtor",
+  metadataBase: new URL("https://produtor.ja-agrotec.com.br"),
+  title: {
+    default: "JA-Produtor · Gestão da propriedade rural com app offline e IA",
+    template: "%s · JA-Produtor",
+  },
+  description:
+    "O único sistema agronômico do mercado com app de campo 100% offline. Lança no celular sem internet, sincroniza ao voltar. IA Claude que sugere ações, cotações intraday CBOT × USD/BRL, fechamento de safra com ROI real. Pra produtores rurais, cooperados e integrados.",
+  applicationName: "JA-Produtor",
+  authors: [{ name: "JA-Agrotec" }],
+  creator: "JA-Agrotec",
+  publisher: "JA-Agrotec",
+  keywords: [
+    "gestão fazenda",
+    "app offline agro",
+    "gestão propriedade rural",
+    "safra ROI",
+    "cotação grãos CBOT",
+    "fechamento safra",
+    "IA agronegócio",
+    "sistema produtor rural",
+    "controle de estoque insumos",
+    "venda de grãos",
+    "talhões safras",
+    "agricultura digital",
+    "sistema cooperado",
+    "PWA agro offline",
+    "fazenda inteligente",
+  ],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    title: "JA-Produtor · O único agro 100% offline do mercado",
+    description:
+      "App de campo que funciona sem internet. Operador lança no celular, sincroniza ao voltar. IA, cotações, ROI real.",
+    type: "website",
+    locale: "pt_BR",
+    siteName: "JA-Produtor",
+    url: "https://produtor.ja-agrotec.com.br",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "JA-Produtor · Gestão rural com app offline + IA",
+    description: "O único agro 100% offline. Sem internet, opera; ao voltar, sincroniza.",
+  },
   appleWebApp: {
     capable: true,
-    title: "JA Agrotec Produtor",
+    title: "JA-Produtor",
     statusBarStyle: "default",
   },
   formatDetection: { telephone: false },
+};
+
+const jsonLdSoftware = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "JA-Produtor",
+  "applicationCategory": "BusinessApplication",
+  "operatingSystem": "Web, iOS, Android (PWA)",
+  "url": "https://produtor.ja-agrotec.com.br",
+  "description":
+    "Plataforma de gestão da propriedade rural — talhões, safras, estoque de insumos, vendas de grãos, ROI real, IA operacional e o único app de campo 100% offline do mercado.",
+  "featureList": [
+    "App de campo offline (PWA)",
+    "Gestão de safras com ROI real",
+    "IA Claude pra análise operacional",
+    "Cotações CBOT intraday",
+    "Controle de estoque automático",
+    "Multi-usuário com hierarquia",
+  ],
+  "publisher": { "@type": "Organization", "name": "JA-Agrotec" },
+  "inLanguage": "pt-BR",
+};
+
+const jsonLdOrganization = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "JA-Agrotec",
+  "url": "https://ja-agrotec.com.br",
+  "logo": "https://ja-agrotec.com.br/logos/ja-agrotec.png",
+  "sameAs": ["https://wa.me/5511964585171"],
 };
 
 export const viewport: Viewport = {
@@ -42,6 +125,16 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR" className={`${jakarta.variable} ${rajdhani.variable}`}>
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdOrganization) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdSoftware) }}
+        />
+      </head>
       <body>
         <AuthProvider>
           {children}

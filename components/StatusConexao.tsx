@@ -19,9 +19,12 @@ type Diag = {
   pingMs: number | null;
 
   // Service Worker
-  swEstado: "ativo" | "instalando" | "ausente" | "erro";
+  swEstado: "ativo" | "instalando" | "aguardando" | "ausente" | "erro";
   swCache: string | null; // versao do cache (CACHE name)
   swControlador: boolean;
+  swScope: string | null;
+  swScriptURL: string | null;
+  swTotalRegs: number;
 
   // Cache Storage
   cacheUrls: number;
@@ -52,6 +55,9 @@ function vazioDiag(): Diag {
     swEstado: "ausente",
     swCache: null,
     swControlador: false,
+    swScope: null,
+    swScriptURL: null,
+    swTotalRegs: 0,
     cacheUrls: 0,
     cacheTamanhoKb: null,
     sessaoEmail: null,
@@ -85,19 +91,34 @@ async function coletarDiagnostico(): Promise<Diag> {
   d.online = await emConexaoReal(3000);
   if (d.online) d.pingMs = Date.now() - t0;
 
-  // Service Worker
+  // Service Worker - itera TODAS as registrations e procura o do operador
   if (typeof navigator !== "undefined" && "serviceWorker" in navigator) {
     try {
-      const reg = await navigator.serviceWorker.getRegistration("/sw-operador.js");
-      if (!reg) {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      d.swTotalRegs = regs.length;
+
+      const operadorReg = regs.find((r) => {
+        const sw = r.active || r.installing || r.waiting;
+        return sw?.scriptURL.includes("sw-operador.js");
+      });
+
+      if (!operadorReg) {
         d.swEstado = "ausente";
-      } else if (reg.active) {
-        d.swEstado = "ativo";
-        d.swControlador = !!navigator.serviceWorker.controller;
-      } else if (reg.installing || reg.waiting) {
-        d.swEstado = "instalando";
+      } else {
+        d.swScope = operadorReg.scope;
+        const sw = operadorReg.active || operadorReg.installing || operadorReg.waiting;
+        d.swScriptURL = sw?.scriptURL || null;
+        if (operadorReg.active) {
+          d.swEstado = "ativo";
+          d.swControlador = !!navigator.serviceWorker.controller;
+        } else if (operadorReg.installing) {
+          d.swEstado = "instalando";
+        } else if (operadorReg.waiting) {
+          d.swEstado = "aguardando";
+        }
       }
-    } catch {
+    } catch (e) {
+      console.warn("[diag] sw erro:", e);
       d.swEstado = "erro";
     }
   }
@@ -203,17 +224,42 @@ export default function StatusConexao() {
     if (!navigator.serviceWorker) return;
     setCarregandoDiag(true);
     try {
-      const reg = await navigator.serviceWorker.getRegistration("/sw-operador.js");
-      if (reg) {
-        await reg.update();
-        toast.success("Verificacao de update enviada. Se houver nova versao, app vai recarregar.");
+      const regs = await navigator.serviceWorker.getRegistrations();
+      const operadorReg = regs.find((r) => {
+        const sw = r.active || r.installing || r.waiting;
+        return sw?.scriptURL.includes("sw-operador.js");
+      });
+      if (operadorReg) {
+        await operadorReg.update();
+        toast.success("Update verificado. Se houver nova versao, app recarrega em segundos.");
       } else {
-        toast.error("Service Worker nao registrado");
+        toast.error("Service Worker nao encontrado. Use 'Registrar SW'.");
       }
-      // Re-coleta diag
       setDiag(await coletarDiagnostico());
     } catch (e: any) {
       toast.error("Falha: " + (e?.message || e));
+    } finally {
+      setCarregandoDiag(false);
+    }
+  }
+
+  async function registrarSwManual() {
+    if (!navigator.serviceWorker) {
+      toast.error("Navegador nao suporta Service Worker");
+      return;
+    }
+    setCarregandoDiag(true);
+    try {
+      const reg = await navigator.serviceWorker.register("/sw-operador.js", {
+        scope: "/operador",
+        updateViaCache: "none",
+      });
+      await reg.update();
+      toast.success("Service Worker registrado!");
+      setTimeout(async () => setDiag(await coletarDiagnostico()), 1500);
+    } catch (e: any) {
+      toast.error("Falha ao registrar: " + (e?.message || e));
+      console.error("[diag] register erro:", e);
     } finally {
       setCarregandoDiag(false);
     }
@@ -308,12 +354,18 @@ export default function StatusConexao() {
                     valor={
                       diag.swEstado === "ativo" ? "✅ Ativo"
                       : diag.swEstado === "instalando" ? "🔄 Instalando"
+                      : diag.swEstado === "aguardando" ? "⏳ Aguardando ativacao"
                       : diag.swEstado === "ausente" ? "⚠️ Nao registrado"
                       : "❌ Erro"
                     }
                     cor={diag.swEstado === "ativo" ? "#2d7d32" : "#e53935"}
                   />
                   <Linha label="Controlando aba" valor={diag.swControlador ? "✅ Sim" : "Nao (recarregue)"} />
+                  {diag.swScope && <Linha label="Escopo" valor={diag.swScope.replace(location.origin, "")} />}
+                  {diag.swScriptURL && (
+                    <Linha label="Script" valor={diag.swScriptURL.split("/").pop() || "?"} />
+                  )}
+                  <Linha label="Total SWs registrados" valor={diag.swTotalRegs.toString()} />
                   {diag.swCache && <Linha label="Versao do cache" valor={diag.swCache} />}
                 </Secao>
 
@@ -343,23 +395,35 @@ export default function StatusConexao() {
                   <Linha label="Compilado em" valor={fmtData(diag.versaoBuildEm)} />
                 </Secao>
 
-                <div className="flex gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--brd)" }}>
-                  <button
-                    onClick={atualizarCache}
-                    disabled={carregandoDiag}
-                    className="btn-primary"
-                    style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
-                  >
-                    🔄 Verificar update
-                  </button>
-                  <button
-                    onClick={limparDados}
-                    disabled={carregandoDiag}
-                    className="btn-ghost"
-                    style={{ padding: "8px 12px", fontSize: 13, color: "#e53935", borderColor: "#e53935" }}
-                  >
-                    🗑️ Limpar dados
-                  </button>
+                <div className="flex flex-col gap-2 mt-4 pt-3" style={{ borderTop: "1px solid var(--brd)" }}>
+                  {diag.swEstado === "ausente" && (
+                    <button
+                      onClick={registrarSwManual}
+                      disabled={carregandoDiag}
+                      className="btn-primary"
+                      style={{ padding: "10px 12px", fontSize: 13 }}
+                    >
+                      📥 Registrar Service Worker
+                    </button>
+                  )}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={atualizarCache}
+                      disabled={carregandoDiag}
+                      className="btn-primary"
+                      style={{ flex: 1, padding: "8px 12px", fontSize: 13 }}
+                    >
+                      🔄 Verificar update
+                    </button>
+                    <button
+                      onClick={limparDados}
+                      disabled={carregandoDiag}
+                      className="btn-ghost"
+                      style={{ padding: "8px 12px", fontSize: 13, color: "#e53935", borderColor: "#e53935" }}
+                    >
+                      🗑️ Limpar dados
+                    </button>
+                  </div>
                 </div>
               </>
             ) : null}

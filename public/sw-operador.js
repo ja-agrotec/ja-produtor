@@ -118,7 +118,7 @@ self.addEventListener("fetch", (event) => {
             }
             return res;
           })
-          .catch(() => caches.match(request) as Promise<Response>);
+          .catch(() => caches.match(request));
       }),
     );
     return;

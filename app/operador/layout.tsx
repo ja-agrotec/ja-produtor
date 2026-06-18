@@ -8,6 +8,7 @@ import { bootstrap, lerCache, sincronizarReferencias } from "@/lib/operador-cach
 import OfflineBanner from "@/components/OfflineBanner";
 import InstalarPwaBanner from "@/components/InstalarPwaBanner";
 import BotaoInstalarPwa from "@/components/BotaoInstalarPwa";
+import StatusConexao from "@/components/StatusConexao";
 import RegisterSwOperador from "@/components/RegisterSwOperador";
 import { emConexaoReal } from "@/lib/offline";
 import { toast } from "sonner";
@@ -123,8 +124,11 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
             <div style={{ fontFamily: "var(--f2)", fontSize: 14, fontWeight: 700, letterSpacing: 2, lineHeight: 1 }}>
               OPERADOR
             </div>
-            <div style={{ fontSize: 11, color: "var(--green)", letterSpacing: 1, marginTop: 2 }}>
-              {fazendaNome || "—"}
+            <div className="flex items-center gap-2 mt-1">
+              <div style={{ fontSize: 11, color: "var(--green)", letterSpacing: 1 }}>
+                {fazendaNome || "—"}
+              </div>
+              <StatusConexao />
             </div>
           </div>
           <BotaoInstalarPwa />

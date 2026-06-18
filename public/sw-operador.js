@@ -1,19 +1,13 @@
 // Service Worker do app Operador.
 // Permite abrir /operador offline servindo o shell HTML/JS/CSS do cache.
 //
-// Estrategia:
-//   - install: pre-cacheia shell + assets essenciais
-//   - activate: limpa caches antigos
-//   - fetch:
-//       /operador*  -> network-first com fallback pro cache (atualizacao
-//                      automatica online, offline volta pro cache)
-//       _next/static/*, /logo* -> cache-first (assets imutaveis)
-//       /api/*, supabase.co -> sem intervencao (network passa direto;
-//                              app trata erros via fila offline ja existente)
+// IMPORTANTE: NAO cacheia HTML/navigation. Cache HTML pode "congelar"
+// versao antiga apos deploy novo. Sempre busca da rede; SO cai pra
+// cache (fallback) quando offline.
+// Cache-first apenas pra assets imutaveis (_next/static/* com hash).
 
-const CACHE = "ja-operador-v4";
+const CACHE = "ja-operador-v6";
 const SHELL = [
-  "/operador",
   "/operador/manifest.json",
   "/logo-ja-agrotec.png",
   "/icon-192.png",
@@ -24,7 +18,6 @@ const SHELL = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE).then(async (c) => {
-      // Cada add separado pra que um 404 nao derrube tudo
       await Promise.all(
         SHELL.map((u) =>
           c.add(u).catch((e) => console.warn("[sw] falhou cache:", u, e?.message || e)),
@@ -37,11 +30,19 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))),
-    ),
+    (async () => {
+      // Limpa TODAS as versoes antigas
+      const keys = await caches.keys();
+      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await self.clients.claim();
+    })(),
   );
-  self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -52,47 +53,32 @@ self.addEventListener("fetch", (event) => {
   // Cross-origin (Supabase, Anthropic, fontes externas): passa direto
   if (url.origin !== self.location.origin) return;
 
-  // API routes: nunca cacheia. Se offline e app tentar bater, falha
-  // limpa - a fila offline (lib/offline.ts) trata o INSERT.
+  // API routes: nunca cacheia. App ja tem fila offline pra isso.
   if (url.pathname.startsWith("/api/")) return;
 
-  // Navegacao do shell /operador: network-first com fallback ao cache
-  const isNavOperador =
-    url.pathname === "/operador" ||
-    url.pathname.startsWith("/operador/") ||
-    request.mode === "navigate";
-
-  if (isNavOperador) {
+  // Navegacao (HTML): SEMPRE busca da rede. Cache aqui causa stale
+  // shell apos deploy. Quando offline, cai pro cache de assets que
+  // ja estao la (manifest, icon) e o app abre sem JS recente.
+  if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
-        .then((res) => {
-          // Cache successful navigations pra usar offline
-          if (res.ok && url.pathname.startsWith("/operador")) {
-            const clone = res.clone();
-            caches.open(CACHE).then((c) => c.put("/operador", clone)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() =>
-          caches.match("/operador").then(
-            (m) =>
-              m ||
-              new Response(
-                "<h1>App offline</h1><p>Sem conexao no primeiro acesso. Conecte e tente de novo.</p>",
-                { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 503 },
-              ),
+      fetch(request).catch(
+        () =>
+          new Response(
+            '<!DOCTYPE html><html lang="pt-BR"><meta charset="utf-8"><title>Offline</title><body style="font-family:system-ui;text-align:center;padding:40px"><h1>📡 Sem conexao</h1><p>Conecte a internet pra recarregar. Lancamentos salvos vao sincronizar sozinhos quando voltar.</p></body></html>',
+            { headers: { "Content-Type": "text/html; charset=utf-8" }, status: 503 },
           ),
-        ),
+      ),
     );
     return;
   }
 
-  // Assets estaticos _next/static/* (com hash, imutaveis) e logo: cache-first
-  const isAssetEstatico =
+  // Assets _next/static/* (hash imutavel) e /icon-* /logo: cache-first
+  const isAssetImutavel =
     url.pathname.startsWith("/_next/static/") ||
+    url.pathname.startsWith("/icon-") ||
     url.pathname.startsWith("/logo");
 
-  if (isAssetEstatico) {
+  if (isAssetImutavel) {
     event.respondWith(
       caches.match(request).then((cached) => {
         if (cached) return cached;
@@ -108,9 +94,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Resto (outras rotas /home, /admin, etc): network-first, fallback cache.
-  // Nao essa rotas nao deveriam ser atingidas pelo SW do operador,
-  // mas garante comportamento previsivel.
+  // manifest.json: network-first com fallback cache
+  if (url.pathname.endsWith("manifest.json") || url.pathname.endsWith("manifest.webmanifest")) {
+    event.respondWith(
+      fetch(request)
+        .then((res) => {
+          if (res.ok) {
+            const clone = res.clone();
+            caches.open(CACHE).then((c) => c.put(request, clone)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(request) as Promise<Response>),
+    );
+    return;
+  }
+
+  // Resto: network-first com fallback cache
   event.respondWith(
     fetch(request).catch(() =>
       caches.match(request).then((m) => m || new Response("offline", { status: 503 })),

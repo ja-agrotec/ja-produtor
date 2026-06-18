@@ -12,8 +12,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const supabase = getSupabase();
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
+    // getSession() le APENAS do localStorage - nao faz request HTTP.
+    // Isso e crucial pra PWA offline: getUser() faria request a
+    // Supabase, falharia sem rede, user=null, layout redirecionava
+    // pra /login, /login nao esta no cache do SW = "Voce esta off-line".
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data.session?.user ?? null);
       setLoading(false);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {

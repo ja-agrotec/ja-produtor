@@ -4,7 +4,7 @@
 //   - Offline: serve do cache (app abre normalmente, lancamentos vao
 //     pra fila, sync quando voltar)
 
-const CACHE = "ja-operador-v7";
+const CACHE = "ja-operador-v8";
 
 // Pre-cacheia no install pra primeira instalacao ja deixar tudo pronto
 // pra modo offline. Se algum item falhar, segue (instalacao nao
@@ -50,6 +50,51 @@ self.addEventListener("message", (event) => {
   }
 });
 
+// Parsea o HTML retornado e baixa+cacheia todos os _next/static/*
+// referenciados (scripts + stylesheets + preload). Sem isso, abrir
+// offline carrega o HTML mas falha em todos os chunks JS que o user
+// ainda nao havia acessado online.
+async function precachearAssetsDoHtml(response) {
+  try {
+    const text = await response.text();
+    // Captura src/href que apontam pra /_next/ (com ou sem origin)
+    const regex = /(?:src|href)=["']([^"']*\/_next\/[^"']+)["']/g;
+    const urls = new Set();
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      let u = match[1];
+      // Normaliza pra path absoluto same-origin
+      if (u.startsWith("http")) {
+        try {
+          const parsed = new URL(u);
+          if (parsed.origin !== self.location.origin) continue;
+          u = parsed.pathname + parsed.search;
+        } catch {
+          continue;
+        }
+      }
+      urls.add(u);
+    }
+    if (urls.size === 0) return;
+    const cache = await caches.open(CACHE);
+    await Promise.all(
+      Array.from(urls).map(async (u) => {
+        try {
+          // So baixa se nao tem ainda (cache-first)
+          const existente = await cache.match(u);
+          if (existente) return;
+          const res = await fetch(u);
+          if (res.ok) await cache.put(u, res);
+        } catch {
+          // Falha silenciosa - tenta de novo em proxima navegacao
+        }
+      }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   const { request } = event;
   if (request.method !== "GET") return;
@@ -76,6 +121,11 @@ self.addEventListener("fetch", (event) => {
             if (url.pathname.startsWith("/operador")) {
               const clone2 = res.clone();
               caches.open(CACHE).then((c) => c.put("/operador", clone2)).catch(() => {});
+              // PRE-CACHE dos chunks JS/CSS referenciados pelo HTML.
+              // Garante que abrir offline funciona sem precisar
+              // do user ter navegado por todas as telas antes.
+              const clone3 = res.clone();
+              precachearAssetsDoHtml(clone3);
             }
           }
           return res;

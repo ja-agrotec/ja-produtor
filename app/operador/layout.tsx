@@ -7,6 +7,7 @@ import { getSupabase } from "@/lib/supabase";
 import { bootstrap, lerCache, sincronizarReferencias } from "@/lib/operador-cache";
 import OfflineBanner from "@/components/OfflineBanner";
 import InstalarPwaBanner from "@/components/InstalarPwaBanner";
+import BotaoInstalarPwa from "@/components/BotaoInstalarPwa";
 import RegisterSwOperador from "@/components/RegisterSwOperador";
 import { emConexaoReal } from "@/lib/offline";
 import { toast } from "sonner";
@@ -126,6 +127,7 @@ export default function OperadorLayout({ children }: { children: React.ReactNode
               {fazendaNome || "—"}
             </div>
           </div>
+          <BotaoInstalarPwa />
           <button
             onClick={sair}
             className="text-xs px-3 py-1.5 rounded-md"

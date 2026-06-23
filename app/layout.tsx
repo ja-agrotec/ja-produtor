@@ -20,6 +20,9 @@ const rajdhani = Rajdhani({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://produtor.ja-agrotec.com.br"),
+  // Manifest explicito (Route Handler em app/manifest.webmanifest/route.ts).
+  // /operador sobrescreve via metadata.manifest do seu proprio layout.
+  manifest: "/manifest.webmanifest",
   title: {
     default: "JA-Produtor · Gestão da propriedade rural com app offline e IA",
     template: "%s · JA-Produtor",

@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "sonner";
+import { Analytics } from "@vercel/analytics/next";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -146,6 +147,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
           <Toaster richColors position="top-right" theme="light" />
         </AuthProvider>
+        <Analytics />
       </body>
     </html>
   );
